@@ -1,8 +1,8 @@
 import requests, time
 from requests import Session
-r = requests.post('https://requestb.in/1lpgxkz1', data={"ts":time.time()})
-print (r.status_code)
-print (r.content)
+#r = requests.post('https://requestb.in/1lpgxkz1', data={"ts":time.time()})
+#print (r.status_code)
+#print (r.content)
 
 
 localhost = 'http://localhost:8001'
@@ -15,27 +15,5 @@ s = requests.Session()
 #print (s.get('http://httpbin.org/deny').text)
 #print (s.get('http://httpbin.org/deny').text)
 
-print (s.get(localhost+'/Screenings').text)
+print (s.get(localhost+'/Files').text)
 
-#An HTTP session is a sequence of network request-response transactions.
-
-session = Session()
-
-# HEAD requests ask for *just* the headers, which is all you need to grab the
-# session cookie
-session.head('http://sportsbeta.ladbrokes.com/football')
-
-response = session.post(
-                        url='http://sportsbeta.ladbrokes.com/view/EventDetailPageComponentController',
-                        data={
-                        'N': '4294966750',
-                        'form-trigger': 'moreId',
-                        'moreId': '156#327',
-                        'pageType': 'EventClass'
-                        },
-                        headers={
-                        'Referer': 'http://sportsbeta.ladbrokes.com/football'
-                        }
-                        )
-
-print (response.text)
