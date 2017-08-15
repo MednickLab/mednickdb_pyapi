@@ -1,6 +1,6 @@
 # python_module
 
-This is a python program that gather all the data
+This is a python api to access the mednicklab database. It implements all get and post endpoints for the database server.
 
 ## Getting Started
 
@@ -41,7 +41,7 @@ npm start
 
 
 
-### Installing local host server
+### Installing python client
 
 First fork my my github 
 
