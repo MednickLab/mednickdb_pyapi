@@ -4,121 +4,85 @@ from requests import Session
 class MednickAPI:
 	
 
-
-
-	def function(self):
-		print("This is a message inside the class.")
-
+	def __init__(self,localhost):
+		'''localhost address constructor'''
+		self.localhost = localhost
+	
+	'''Below are all the function, which could call different endpoint'''
 	def files(self, study,visit,session,doctype):
-		"""This one pass in the parameters for get"""
-		
-		localhost = 'http://localhost:8001'
+	
 		s = requests.Session()
-		return s.get(localhost+'/Files?'+'study='+study+'&visit='+visit+'&session='+session+'&doctype='+doctype).text
+		return s.get(self.localhost+'/Files?'+'study='+study+'&visit='+visit+'&session='+session+'&doctype='+doctype).text
 
 	def DeletedFiles(self):
-		"""This one pass in the parameters for get"""
-		
-		localhost = 'http://localhost:8001'
 		s = requests.Session()
-		return s.get(localhost+'/DeletedFiles').text
+		return s.get(self.localhost+'/DeletedFiles').text
 
 	def file(self,id):
-		"""This one pass in the parameters for get"""
-		
-		localhost = 'http://localhost:8001'
 		s = requests.Session()
-		return s.get(localhost+'/File?'+'id='+id).text
+		return s.get(self.localhost+'/File?'+'id='+id).text
 
 	def DownloadFile(self,id):
-		"""This one pass in the parameters for get"""
-		
-		localhost = 'http://localhost:8001'
 		s = requests.Session()
-		return s.get(localhost+'/DownloadFile?'+'id='+id).text
+		return s.get(self.localhost+'/DownloadFile?'+'id='+id).text
 	
 	def TempFiles(self):
-		"""This one pass in the parameters for get"""
-		localhost = 'http://localhost:8001'
 		s = requests.Session()
-		return s.get(localhost+'/DeletedFiles').text
+		return s.get(self.localhost+'/DeletedFiles').text
 
 	def DocumentTypes(self):
-		"""This one pass in the parameters for get"""
-		localhost = 'http://localhost:8001'
 		s = requests.Session()
-		return s.get(localhost+'/DocumentTypes').text	
+		return s.get(self.localhost+'/DocumentTypes').text	
 
 	def Sessions(self,study,visit):
-		"""This one pass in the parameters for get"""
-		localhost = 'http://localhost:8001'
 		s = requests.Session()
-		return s.get(localhost+'/Sessions?'+'study='+study+'&visit='+visit).text
+		return s.get(self.localhost+'/Sessions?'+'study='+study+'&visit='+visit).text
 
 	def Studies(self):
-		"""This one pass in the parameters for get"""
-		localhost = 'http://localhost:8001'
 		s = requests.Session()
-		return s.get(localhost+'/Studies').text	
+		return s.get(self.localhost+'/Studies').text	
 
 	def Visits(self,study):
-		"""This one pass in the parameters for get"""
-		
-		localhost = 'http://localhost:8001'
 		s = requests.Session()
-		return s.get(localhost+'/Visits?'+'study='+study).text
+		return s.get(self.localhost+'/Visits?'+'study='+study).text
 
 	def updateFile(self,id):
-		"""This one pass in the parameters for get"""
-		
-		localhost = 'http://localhost:8001'
 		s = requests.Session()
-		s.post(localhost+'/UpdateFile/'+id)
+		s.post(self.localhost+'/UpdateFile/'+id)
 
 	def UploadFile(self):
-		"""This one pass in the parameters for get"""
-		
-		localhost = 'http://localhost:8001'
 		s = requests.Session()
-		s.post(localhost+'/FileUpload')
+		s.post(self.localhost+'/FileUpload')
 
 	def NewFileRecord(self):
-		"""This one pass in the parameters for get"""
-		
-		localhost = 'http://localhost:8001'
+
 		s = requests.Session()
-		s.post(localhost+'/NewFileRecord')
+		s.post(self.localhost+'/NewFileRecord')
 
 	def TaskData(self):
-		"""This one pass in the parameters for get"""
-		
-		localhost = 'http://localhost:8001'
+
 		s = requests.Session()
-		s.post(localhost+'/TaskData')
+		s.post(self.localhost+'/TaskData')
 
 	def Screenings(self):
-		"""This one pass in the parameters for get"""
-		
-		localhost = 'http://localhost:8001'
+
 		s = requests.Session()
-		s.post(localhost+'/Screenings')
+		s.post(self.localhost+'/Screenings')
 
 	def UpdateParsedStatus(self):
-		"""This one pass in the parameters for get"""
-		
-		localhost = 'http://localhost:8001'
+
 		s = requests.Session()
-		s.post(localhost+'/UpdateParsedStatus')
-
-
-Mednick = MednickAPI();
-print(Mednick.files('study4','visit1','session1','screening'))
-print ('\n')
-print(Mednick.DeletedFiles())
-print ('\n')
-print(Mednick.file('5977072b60950c2778cd2d33'))
-print ('\n')
-print(Mednick.Sessions('study1','visit1'))
-print ('\n')
-#s = requests.Session()
-#print(s.get('http://localhost:8001/Files?study=study4&visit=visit1&session=session1&doctype=screening').text)
+		s.post(self.localhost+'/UpdateParsedStatus')
+  
+if __name__ == "__main__":
+	Mednick = MednickAPI('http://localhost:8001')
+	print(Mednick.files('study4','visit1','session1','screening'))
+	print ('\n')
+	print(Mednick.DeletedFiles())
+	print ('\n')
+	print(Mednick.file('5977072b60950c2778cd2d33'))
+	print ('\n')
+	print(Mednick.Sessions('study1','visit1'))
+	print ('\n')
+	#s = requests.Session()
+	#print(s.get('http://localhost:8001/Files?study=study4&visit=visit1&session=session1&doctype=screening').text))
