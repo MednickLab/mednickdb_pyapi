@@ -8,21 +8,24 @@ class MednickAPI:
 		'''localhost address constructor'''
 		self.localhost = localhost
 	
-	'''Below are all the function, which could call different endpoint'''
+	'''Below are all the functions, which could call different endpoints'''
 	def files(self, study,visit,session,doctype):
 	
 		s = requests.Session()
 		return s.get(self.localhost+'/Files?'+'study='+study+'&visit='+visit+'&session='+session+'&doctype='+doctype).text
 
 	def DeletedFiles(self):
+
 		s = requests.Session()
 		return s.get(self.localhost+'/DeletedFiles').text
 
 	def file(self,id):
+
 		s = requests.Session()
 		return s.get(self.localhost+'/File?'+'id='+id).text
 
 	def DownloadFile(self,id):
+
 		s = requests.Session()
 		return s.get(self.localhost+'/DownloadFile?'+'id='+id).text
 	
