@@ -7,75 +7,68 @@ class MednickAPI:
 	def __init__(self,localhost):
 		'''localhost address constructor'''
 		self.localhost = localhost
+		self.s = requests.Session()
 	
-	'''Below are all the functions, which could call different endpoints'''
+	'''Below are all the functions, which could call different endpoints,for more details please read the readme'''
 	def files(self, study,visit,session,doctype):
-	
-		s = requests.Session()
-		return s.get(self.localhost+'/Files?'+'study='+study+'&visit='+visit+'&session='+session+'&doctype='+doctype).text
+		
+		return self.s.get(self.localhost+'/Files?'+'study='+study+'&visit='+visit+'&session='+session+'&doctype='+doctype).text
 
 	def DeletedFiles(self):
 
-		s = requests.Session()
-		return s.get(self.localhost+'/DeletedFiles').text
+		return self.s.get(self.localhost+'/DeletedFiles').text
 
 	def file(self,id):
 
-		s = requests.Session()
-		return s.get(self.localhost+'/File?'+'id='+id).text
+		return self.s.get(self.localhost+'/File?'+'id='+id).text
 
 	def DownloadFile(self,id):
 
-		s = requests.Session()
-		return s.get(self.localhost+'/DownloadFile?'+'id='+id).text
+		return self.s.get(self.localhost+'/DownloadFile?'+'id='+id).text
 	
 	def TempFiles(self):
-		s = requests.Session()
-		return s.get(self.localhost+'/DeletedFiles').text
+
+		return self.s.get(self.localhost+'/DeletedFiles').text
 
 	def DocumentTypes(self):
-		s = requests.Session()
-		return s.get(self.localhost+'/DocumentTypes').text	
+		
+		return self.s.get(self.localhost+'/DocumentTypes').text	
 
 	def Sessions(self,study,visit):
-		s = requests.Session()
-		return s.get(self.localhost+'/Sessions?'+'study='+study+'&visit='+visit).text
+		
+		return self.s.get(self.localhost+'/Sessions?'+'study='+study+'&visit='+visit).text
 
 	def Studies(self):
-		s = requests.Session()
-		return s.get(self.localhost+'/Studies').text	
+		
+		return self.s.get(self.localhost+'/Studies').text	
 
 	def Visits(self,study):
-		s = requests.Session()
-		return s.get(self.localhost+'/Visits?'+'study='+study).text
+		
+		return self.s.get(self.localhost+'/Visits?'+'study='+study).text
 
 	def updateFile(self,id):
-		s = requests.Session()
-		s.post(self.localhost+'/UpdateFile/'+id)
+		
+		self.s.post(self.localhost+'/UpdateFile/'+id)
 
 	def UploadFile(self):
-		s = requests.Session()
-		s.post(self.localhost+'/FileUpload')
+		
+		self.s.post(self.localhost+'/FileUpload')
 
 	def NewFileRecord(self):
 
-		s = requests.Session()
-		s.post(self.localhost+'/NewFileRecord')
+		self.s.post(self.localhost+'/NewFileRecord')
 
 	def TaskData(self):
 
-		s = requests.Session()
-		s.post(self.localhost+'/TaskData')
+		self.s.post(self.localhost+'/TaskData')
 
 	def Screenings(self):
 
-		s = requests.Session()
-		s.post(self.localhost+'/Screenings')
+		self.s.post(self.localhost+'/Screenings')
 
 	def UpdateParsedStatus(self):
-
-		s = requests.Session()
-		s.post(self.localhost+'/UpdateParsedStatus')
+		
+		self.s.post(self.localhost+'/UpdateParsedStatus')
   
 if __name__ == "__main__":
 	Mednick = MednickAPI('http://localhost:8001')

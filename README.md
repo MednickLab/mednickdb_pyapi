@@ -49,12 +49,11 @@ First fork my my github
 git clone https://github.com/MednickLab/PythonModule.git
 ```
 
+### Mednick DB link
 
 ```
-python filename.py
+https://github.com/jvillagomez/mednickDB
 ```
-
-
 
 
 ## Authors
