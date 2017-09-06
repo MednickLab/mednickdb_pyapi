@@ -1,6 +1,6 @@
 # python_module
 
-This is a python api to access the mednicklab database. It implements all get and post endpoints for the database server.
+This is a python api to access the mednicklab database. It implements all get and post endpoints for the database server. Please see the [MednickDB](https://mednicklab.github.io/mednickDB/) documentation for more information on the specific endpoints.
 
 ## Getting Started
 
