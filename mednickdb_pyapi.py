@@ -57,12 +57,13 @@ class MednickAPI:
 
     def upload_file(self, file_data, file_name=None, study=None, version=None, visit=None, session=None, filetype=None):
         """Upload a file data to the filestore in the specified location. File_data should be convertable to json.
-        If this is a brand new file, then add, if it exists, then overwrite"""
+        If this is a brand new file, then add, if it exists, then overwrite. This shoudl return file id"""
         # TODO test this. Do we need a filename?
-        self.s.post(self.server_address + '/FileUpload?' +
+        ret = self.s.post(self.server_address + '/FileUpload?' +
                     append_hierarchical_specifiers(study, version, visit, session, filetype) +
                     '&FileName=' + file_name +
                     '&FileData=' + json.dumps(file_data))
+        return json.loads(ret)['id']
 
     def update_file_info(self, id, file_info):
         """Add meta data to a file. file_info should be key:value pairs. already existing keys will be overwritten"""
@@ -135,6 +136,9 @@ class MednickAPI:
         """Return a data rows (as python objects) that match the query"""
         ret = self.s.post(self.server_address + '/QueryData?query=' + query_string)
         return json.loads(ret)
+
+    def __del__(self):
+        # TODO, this should trigger logout??
 
 
 if __name__ == "__main__":
