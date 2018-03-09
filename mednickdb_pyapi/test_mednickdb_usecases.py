@@ -1,8 +1,10 @@
-from mednickdb_pyapi import MednickAPI
+from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
 import pytest
+
 
 def pytest_namespace():
     return {'usecase_1_filedata': None}
+
 
 @pytest.mark.dependency()
 def test_usecase_1():

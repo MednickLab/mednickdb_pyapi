@@ -1,4 +1,4 @@
-from mednickdb_pyapi import MednickAPI
+from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
 
 
 def test_login():

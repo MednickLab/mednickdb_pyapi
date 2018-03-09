@@ -1,0 +1,9 @@
+{
+  "mednickdb_pyapi/test_mednickdb_pyapi.py::test_login": true,
+  "mednickdb_pyapi/test_mednickdb_pyapi.py::test_upload_and_download_file": true,
+  "mednickdb_pyapi/test_mednickdb_usecases.py::test_usecase_1": true,
+  "mednickdb_pyapi/test_mednickdb_usecases.py::test_usecase_2": true,
+  "mednickdb_pyapi/test_mednickdb_usecases.py::test_usecase_3": true,
+  "mednickdb_pyapi/test_mednickdb_usecases.py::test_usecase_4": true,
+  "mednickdb_pyapi/test_mednickdb_usecases.py::test_usecase_5": true
+}
