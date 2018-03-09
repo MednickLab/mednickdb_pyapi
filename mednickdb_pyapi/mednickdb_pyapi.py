@@ -2,12 +2,14 @@ import requests
 import json
 
 
-def append_hierarchical_specifiers(study=None, version=None, visit=None, session=None, filetype=None):
+def append_hierarchical_specifiers(study=None, version=None, subject=None, visit=None, session=None, filetype=None):
     base_str = ''
     if study:
         base_str = base_str + '&study=' + study
     if version:
         base_str = base_str + '&version=' + version
+    if subject:
+        base_str = base_str + '&subject=' + subject
     if visit:
         base_str = base_str + '&visit=' + visit
     if session:
@@ -34,34 +36,35 @@ class MednickAPI:
         ret = json.loads(self.s.post(base_str))
         return ret['token'], ret['usertype']
 
-    def get_files(self, study=None, version=None, visit=None, session=None, filetype=None):
-        """Retrieves a list of files and their metadata from the file store that match the above specifiers"""
+    def get_file_ids(self, study=None, version=None, subject=None, visit=None, session=None, filetype=None):
+        """Retrieves a list of files ids for files in the file store that match the above specifiers"""
         base_str = self.server_address + '/Files?' + \
-                   append_hierarchical_specifiers(study, version, visit, session, filetype)
+                   append_hierarchical_specifiers(study, version, subject, visit, session, filetype)
         return json.loads(self.s.get(base_str).text)
 
-    def get_deleted_files(self, study=None, version=None, visit=None, session=None, filetype=None):
+    def get_deleted_files(self, study=None, version=None, subject=None, visit=None, session=None, filetype=None):
         """Retrieves a list of deleted files and their metadata from the file store that match the above specifiers"""
         base_str = self.server_address + '/DeletedFiles?' + \
-                   append_hierarchical_specifiers(study, version, visit, session, filetype)
+                   append_hierarchical_specifiers(study, version, subject, visit, session, filetype)
         return json.loads(self.s.get(base_str).text)
 
-    def download_file(self, id):
-        """Downloads a file that matches the id as binary data"""
+    def download_file(self, fid):
+        """Downloads a file that matches the file id as binary data"""
         # TODO, may need to convert this
-        return json.loads(self.s.get(self.server_address + '/DownloadFile?' + 'id=' + id).text)
+        return json.loads(self.s.get(self.server_address + '/DownloadFile?' + 'id=' + fid).text)
 
-    def get_file_info(self, id):
+    def get_file_info(self, fid):
         """Get the meta data associated with a file id (i.e. the data associated with this id in the filestore)"""
-        return json.loads(self.s.get(self.server_address + '/FileInfo?' + 'id=' + id).text)
+        return json.loads(self.s.get(self.server_address + '/FileInfo?' + 'id=' + fid).text)
 
-    def upload_file(self, file_data, file_name=None, study=None, version=None, visit=None, session=None, filetype=None):
+    def upload_file(self, file_data, fileformat, filename=None, study=None, version=None, subject=None, visit=None, session=None, filetype=None):
         """Upload a file data to the filestore in the specified location. File_data should be convertable to json.
         If this is a brand new file, then add, if it exists, then overwrite. This shoudl return file id"""
         # TODO test this. Do we need a filename?
         ret = self.s.post(self.server_address + '/FileUpload?' +
-                    append_hierarchical_specifiers(study, version, visit, session, filetype) +
-                    '&FileName=' + file_name +
+                    append_hierarchical_specifiers(study, version, subject, visit, session, filetype) +
+                    '&FileName=' + filename +
+                    '&FileFormat'+ fileformat +
                     '&FileData=' + json.dumps(file_data))
         return json.loads(ret)['id']
 
@@ -71,25 +74,25 @@ class MednickAPI:
                     'id=' + id +
                     '&FileInfo=' + json.dumps(file_info))
 
-    def upload_data(self, data, file_id=None, study=None, version=None, visit=None, session=None, filetype=None):
+    def upload_data(self, data, fid=None, study=None, version=None, subject=None, visit=None, session=None, filetype=None):
         """Upload a data to the datastore in the specified location. data should be a single object of key:values and convertable to json.
         If this is a new location (no data exists), then add, if it exists, merge or overwrite.
         If this data came from a particular file in the server, then please add a file id to link back to that file"""
         self.s.post(self.server_address + '/FileUpload?' +
-                    append_hierarchical_specifiers(study, version, visit, session, filetype) +
+                    append_hierarchical_specifiers(study, version, subject, visit, session, filetype) +
                     '&Data=' + json.dumps(data) +
-                    '&FileId=' + id)
+                    '&FileId=' + fid)
 
-    def get_data(self, study=None, version=None, visit=None, session=None, filetype=None):
+    def get_data(self, study=None, version=None, subject=None, visit=None, session=None, filetype=None):
         """Get all the data in the datastore at the specified location. Return is python dictionary"""
         ret = self.s.post(
-            self.server_address + '/Data?' + append_hierarchical_specifiers(study, version, visit, session, filetype))
+            self.server_address + '/Data?' + append_hierarchical_specifiers(study, version, subject, visit, session, filetype))
         return json.loads(ret)
 
-    def get_deleted_data(self, study=None, version=None, visit=None, session=None, filetype=None):
+    def get_deleted_data(self, study=None, version=None, subject=None, visit=None, session=None, filetype=None):
         """Get all the data in the datastore at the specified location. Return is python dictionary"""
         ret = self.s.post(
-            self.server_address + '/DeletedData?' + append_hierarchical_specifiers(study, version, visit, session,
+            self.server_address + '/DeletedData?' + append_hierarchical_specifiers(study, version, subject, visit, session,
                                                                                    filetype))
         return json.loads(ret)
 
@@ -98,30 +101,30 @@ class MednickAPI:
         ret = self.s.post(self.server_address + '/FileData?id=' + id)
         return json.loads(ret)
 
-    def get_filetypes(self, study, version=None, visit=None, session=None, store='File'):
+    def get_filetypes(self, study, version=None, subject=None, visit=None, session=None, store='File'):
         """Get the filetypes associated with that level of the hierarchy from the data or file store"""
         # TODO implement switch for file or data store
         return json.loads(self.s.get(self.server_address + '/FileTypes' +
-                                     append_hierarchical_specifiers(study, version, visit, session)).text)
+                                     append_hierarchical_specifiers(study, version, subject, visit, session)).text)
 
-    def get_sessions(self, study, version, visit, store='Data'):
+    def get_sessions(self, study, version, subject, visit, store='Data'):
         """Get the sessions associated with a particular study,version,visit.
         Either from data store (default) or file store"""
         # TODO implement switch for file or data store
         return json.loads(self.s.get(self.server_address + '/Sessions?' +
-                                     append_hierarchical_specifiers(study, version, visit)).text)
+                                     append_hierarchical_specifiers(study, version, subject, visit)).text)
 
     def get_studies(self, store="Data"):
         """Get a list of studies stored in either the data or file store"""
         # TODO implement switch for file or data store
         return json.loads(self.s.get(self.server_address + '/Studies').text)
 
-    def get_visits(self, study, version, store='Data'):
+    def get_visits(self, study, version, subject, store='Data'):
         """Get the visits associated with a particular study,version.
         Either from data store (default) or file store"""
         # TODO implement switch for file or data store
         return json.loads(self.s.get(self.server_address + '/Visits?' +
-                                     append_hierarchical_specifiers(study, version)).text)
+                                     append_hierarchical_specifiers(study, version, subject)).text)
 
     def update_parsed_status(self, id, status):
         """Change the parsed status of a file. Status is True when parsed or False otherwise"""
@@ -139,10 +142,5 @@ class MednickAPI:
 
     def __del__(self):
         # TODO, this should trigger logout??
+        pass
 
-
-if __name__ == "__main__":
-    Mednick = MednickAPI('http://server_address:8001')
-
-# s = requests.Session()
-# print(s.get('http://server_address:8001/Files?study=study4&visit=visit1&session=session1&doctype=screening').text))

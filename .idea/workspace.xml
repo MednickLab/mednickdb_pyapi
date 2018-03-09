@@ -2,9 +2,40 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="bdb0168f-b502-4791-b184-fb95a6b130d2" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/test_mednickdb_pyapi.py" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/LICENCE.txt" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/mednickdb_pyapi/test_mednickdb_usecases.py" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/setup.py" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/ERQ.xls" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/Encoding_Sub1_Visit1.csv" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/Encoding_Sub1_Visit1.mat" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/Encoding_Sub1_Visit2.csv" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/Encoding_Sub1_Visit2.mat" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/Encoding_Sub1_Visit3.csv" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/Encoding_Sub1_Visit3.mat" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/ExP.xls" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/PSQ.xls" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/STATS_Sub1Session1Test0.csv" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/STATS_Sub1Session1Test0.mat" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/STATS_Sub1Session2Test0.csv" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/STATS_Sub1Session2Test0.mat" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/STATS_Sub1Session4Test1.csv" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/STATS_Sub1Session4Test1.mat" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/STATS_Sub1Session4Test2.csv" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/STATS_Sub1Session4Test2.mat" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/STATS_Sub1Session4Test3.csv" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/STATS_Sub1Session4Test3.mat" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/STATS_Sub1Session4Test4.csv" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/STATS_Sub1Session4Test4.mat" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/Screening.xls" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/dummy_file/stimSet_sub1.mat" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/request.py" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/server.py" afterPath="" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/__init__.py" afterPath="$PROJECT_DIR$/mednickdb_pyapi/__init__.py" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/mednickdb_pyapi.py" afterPath="$PROJECT_DIR$/mednickdb_pyapi/mednickdb_pyapi.py" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/test_mednickdb_pyapi.py" afterPath="$PROJECT_DIR$/mednickdb_pyapi/test_mednickdb_pyapi.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/mednickdb_pyapi.iml" afterPath="$PROJECT_DIR$/.idea/mednickdb_pyapi.iml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="$PROJECT_DIR$/.idea/misc.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/mednickdb_pyapi.py" afterPath="$PROJECT_DIR$/mednickdb_pyapi.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -17,10 +48,10 @@
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="600">
       <file leaf-file-name="mednickdb_pyapi.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/mednickdb_pyapi.py">
+        <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/mednickdb_pyapi.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1119">
-              <caret line="65" column="36" lean-forward="true" selection-start-line="65" selection-start-column="36" selection-end-line="65" selection-end-column="36" />
+            <state relative-caret-position="1520">
+              <caret line="38" column="20" lean-forward="false" selection-start-line="38" selection-start-column="8" selection-end-line="38" selection-end-column="20" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -28,11 +59,43 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="test_mednickdb_pyapi.py" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/test_mednickdb_pyapi.py">
+      <file leaf-file-name="test_mednickdb_pyapi.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/test_mednickdb_pyapi.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="560">
-              <caret line="14" column="54" lean-forward="false" selection-start-line="14" selection-start-column="54" selection-end-line="14" selection-end-column="54" />
+            <state relative-caret-position="0">
+              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="38" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="test_mednickdb_usecases.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/test_mednickdb_usecases.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="4320">
+              <caret line="108" column="49" lean-forward="false" selection-start-line="108" selection-start-column="49" selection-end-line="108" selection-end-column="49" />
+              <folding>
+                <element signature="e#0#38#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="__init__.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/__init__.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="0">
+              <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="setup.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/setup.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="320">
+              <caret line="8" column="20" lean-forward="true" selection-start-line="8" selection-start-column="20" selection-end-line="8" selection-end-column="20" />
               <folding />
             </state>
           </provider>
@@ -53,8 +116,12 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/mednickdb_pyapi.py" />
         <option value="$PROJECT_DIR$/test_mednickdb_pyapi.py" />
+        <option value="$PROJECT_DIR$/mednickdb_pyapi.py" />
+        <option value="$PROJECT_DIR$/test_mednickdb_usecases.py" />
+        <option value="$PROJECT_DIR$/mednickdb_pyapi/__init__.py" />
+        <option value="$PROJECT_DIR$/setup.py" />
+        <option value="$PROJECT_DIR$/LICENCE.txt" />
       </list>
     </option>
   </component>
@@ -99,13 +166,33 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="mednickdb_pyapi" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="mednickdb_pyapi" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="mednickdb_pyapi" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
         </subPane>
       </pane>
     </panes>
   </component>
   <component name="PropertiesComponent">
-    <property name="last_opened_file_path" value="$USER_HOME$/Anaconda3/envs/pyeeg/python.exe" />
+    <property name="last_opened_file_path" value="$USER_HOME$/Anaconda3/envs/mednickdb/python.exe" />
     <property name="WebServerToolWindowFactoryState" value="true" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\bdyet\GoogleDrive\mednickdb_pyapi\mednickdb_pyapi" />
+    </key>
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -269,6 +356,23 @@
       <option name="_new_targetType" value="&quot;PATH&quot;" />
       <method />
     </configuration>
+    <configuration default="true" type="tests" factoryName="py.test">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="mednickdb_pyapi" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" enabled="false" sample_coverage="true" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;.&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method />
+    </configuration>
   </component>
   <component name="ShelveChangesManager" show_recycled="false">
     <option name="remove_strategy" value="false" />
@@ -294,7 +398,7 @@
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Remote Host" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.14751773" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.15035461" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
@@ -320,7 +424,7 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi.py">
+    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/mednickdb_pyapi.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
@@ -330,7 +434,25 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi.py">
+    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/test_mednickdb_pyapi.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="38" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/test_mednickdb_usecases.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="160">
+          <caret line="4" column="4" lean-forward="false" selection-start-line="4" selection-start-column="4" selection-end-line="4" selection-end-column="4" />
+          <folding>
+            <element signature="e#0#38#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/mednickdb_pyapi.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
@@ -340,7 +462,35 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi.py">
+    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/test_mednickdb_pyapi.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="560">
+          <caret line="14" column="54" lean-forward="false" selection-start-line="14" selection-start-column="54" selection-end-line="14" selection-end-column="54" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/mednickdb_pyapi.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#15#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/mednickdb_pyapi.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#15#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/mednickdb_pyapi.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
@@ -357,20 +507,78 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi.py">
+    <entry file="file://$PROJECT_DIR$/requirements.txt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1119">
-          <caret line="65" column="36" lean-forward="true" selection-start-line="65" selection-start-column="36" selection-end-line="65" selection-end-column="36" />
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/request.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/__init__.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/server.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-41">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/test_mednickdb_usecases.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="4320">
+          <caret line="108" column="49" lean-forward="false" selection-start-line="108" selection-start-column="49" selection-end-line="108" selection-end-column="49" />
+          <folding>
+            <element signature="e#0#38#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/test_mednickdb_pyapi.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="38" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mednickdb_pyapi/mednickdb_pyapi.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1520">
+          <caret line="38" column="20" lean-forward="false" selection-start-line="38" selection-start-column="8" selection-end-line="38" selection-end-column="20" />
           <folding>
             <element signature="e#0#15#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/test_mednickdb_pyapi.py">
+    <entry file="file://$PROJECT_DIR$/LICENCE.txt">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="560">
-          <caret line="14" column="54" lean-forward="false" selection-start-line="14" selection-start-column="54" selection-end-line="14" selection-end-column="54" />
+        <state relative-caret-position="0">
+          <caret line="0" column="43" lean-forward="false" selection-start-line="0" selection-start-column="43" selection-end-line="0" selection-end-column="43" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/setup.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="320">
+          <caret line="8" column="20" lean-forward="true" selection-start-line="8" selection-start-column="20" selection-end-line="8" selection-end-column="20" />
           <folding />
         </state>
       </provider>

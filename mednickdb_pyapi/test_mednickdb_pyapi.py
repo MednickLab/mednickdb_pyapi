@@ -13,3 +13,4 @@ def test_upload_and_download_file():
         fid = med_api.upload_file(uploaded_version,'TestFile.yay','PSTIM', 1, 1)
         downloaded_version = med_api.download_file(fid)
         assert(downloaded_version == uploaded_version)
+
