@@ -54,7 +54,7 @@ def append_hierarchical_specifiers(studyid=None, versionid=None, subjectid=None,
 
 def extract_hierarchical_specifiers(obj):
     specifier_keys = ['studyid', 'versionid', 'subjectid', 'visitid', 'sessionid', 'filetype']
-    return {key:value for key, value in obj if key in specifier_keys}
+    return {key: value for key, value in obj if key in specifier_keys}
 
 
 class MednickAPI:
@@ -81,7 +81,7 @@ class MednickAPI:
                    append_hierarchical_specifiers(studyid, versionid, subjectid, visitid, sessionid, filetype)
         return json.loads(self.s.get(base_str).text)
 
-    def get_deleted_files(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
+    def get_deleted_file_ids(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
         """Retrieves a list of fids for deleted files from the file store that match the above specifiers"""
         base_str = self.server_address + '/DeletedFiles?' + \
                    append_hierarchical_specifiers(studyid, versionid, subjectid, visitid, sessionid, filetype)
@@ -125,7 +125,7 @@ class MednickAPI:
                       'sessionid':sessionid,
                       'filetype':filetype}
         specifiers.update(extract_hierarchical_specifiers(data))
-        self.s.post(self.server_address + '/FileUpload?' +
+        self.s.post(self.server_address + '/DataUpload?' +
                     append_hierarchical_specifiers(**specifiers) +
                     '&Data=' + json.dumps(data, cls=MyEncoder) +
                     '&FileId=' + fid)
@@ -158,26 +158,33 @@ class MednickAPI:
         """Get the sessionids associated with a particular studyid,versionid,visitid.
         Either from data store (default) or file store"""
         # TODO implement switch for file or data store
-        return json.loads(self.s.get(self.server_address + '/sessionids?' +
+        return json.loads(self.s.get(self.server_address + '/Sessionids?' +
                                      append_hierarchical_specifiers(studyid, versionid, subjectid, visitid)).text)
 
     def get_studyids(self, store="Data"):
         """Get a list of studies stored in either the data or file store"""
         # TODO implement switch for file or data store
-        return json.loads(self.s.get(self.server_address + '/Studies').text)
+        return json.loads(self.s.get(self.server_address + '/Studyids?').text)
 
     def get_visitids(self, studyid, versionid, subjectid, store='Data'):
         """Get the visitids associated with a particular studyid,versionid.
         Either from data store (default) or file store"""
         # TODO implement switch for file or data store
-        return json.loads(self.s.get(self.server_address + '/visitids?' +
+        return json.loads(self.s.get(self.server_address + '/Visitids?' +
+                                     append_hierarchical_specifiers(studyid, versionid, subjectid)).text)
+
+    def get_versionids(self, studyid, versionid, subjectid, store='Data'):
+        """Get the visitids associated with a particular studyid,versionid.
+        Either from data store (default) or file store"""
+        # TODO implement switch for file or data store
+        return json.loads(self.s.get(self.server_address + '/Versionids?' +
                                      append_hierarchical_specifiers(studyid, versionid, subjectid)).text)
 
     def update_parsed_status(self, id, status):
         """Change the parsed status of a file. Status is True when parsed or False otherwise"""
         self.s.post(self.server_address + '/UpdateParsedStatus?id=' + id + '&Status=' + status)
 
-    def update_unparsed_files(self):
+    def get_unparsed_files(self):
         """Return a list of fid's for unparsed files"""
         return json.loads(self.s.post(self.server_address + '/UnparsedFiles?'))
 
