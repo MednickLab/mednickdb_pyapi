@@ -107,10 +107,10 @@ class MednickAPI:
                     '&FileData=' + json.dumps(file_data, cls=MyEncoder))
         return json.loads(ret)['id']
 
-    def update_file_info(self, id, file_info):
+    def update_file_info(self, fid, file_info):
         """Add meta data to a file. file_info should be key:value pairs. already existing keys will be overwritten"""
         self.s.post(self.server_address + '/UpdateFileInfo?' +
-                    'id=' + id +
+                    'id=' + fid +
                     '&FileInfo=' + json.dumps(file_info, cls=MyEncoder))
 
     def upload_data(self, data, fid=None, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
@@ -136,6 +136,10 @@ class MednickAPI:
             self.server_address + '/Data?' + append_hierarchical_specifiers(studyid, versionid, subjectid, visitid, sessionid, filetype))
         return json.loads(ret, cls=MyDecoder)
 
+    def delete_data(self, studyid, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
+        """Delete all data at a particular level of the hierarchy"""
+        self.s.post(self.server_address + '/DeleteFileData?' + append_hierarchical_specifiers(studyid, versionid, subjectid, visitid, sessionid, filetype))
+
     def get_deleted_data(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
         """Get all the data in the datastore at the specified location. Return is python dictionary"""
         ret = self.s.post(
@@ -143,9 +147,19 @@ class MednickAPI:
                                                                                    filetype))
         return json.loads(ret, cls=MyDecoder)
 
-    def get_data_associated_with_file(self, id):
+    def delete_file(self, fid):
+        """Delete a file from the filestore"""
+        self.s.post(self.server_address + '/DeleteFile?id=' + fid)
+
+    def delete_data_associated_with_file(self, fid):
+        """Delete data from the database that is associated with a particular file id (i.e. data that was extracted from that file)"""
+        self.s.post(self.server_address + '/DeleteFileData?id=' + fid)
+
+    # def reinstate_data(self, studyid, versionid=None, subjectid=None, visitid=None, sessionid=None): TODO
+
+    def get_data_associated_with_file(self, fid):
         """Get the data in the datastore associated with a file (i.e. get the data that was extracted from that file on upload)"""
-        ret = self.s.post(self.server_address + '/FileData?id=' + id)
+        ret = self.s.post(self.server_address + '/FileData?id=' + fid)
         return json.loads(ret, cls=MyDecoder)
 
     def get_filetypes(self, studyid, versionid=None, subjectid=None, visitid=None, sessionid=None, store='File'):
@@ -154,7 +168,7 @@ class MednickAPI:
         return json.loads(self.s.get(self.server_address + '/FileTypes' +
                                      append_hierarchical_specifiers(studyid, versionid, subjectid, visitid, sessionid)).text)
 
-    def get_sessionids(self, studyid, versionid, subjectid, visitid, store='Data'):
+    def get_sessionids(self, studyid=None, versionid=None, subjectid=None, visitid=None, store='Data'):
         """Get the sessionids associated with a particular studyid,versionid,visitid.
         Either from data store (default) or file store"""
         # TODO implement switch for file or data store
@@ -166,14 +180,19 @@ class MednickAPI:
         # TODO implement switch for file or data store
         return json.loads(self.s.get(self.server_address + '/Studyids?').text)
 
-    def get_visitids(self, studyid, versionid, subjectid, store='Data'):
+    def get_subjectids(self, studyid=None, versionid=None, store="Data"):
+        """Get a list of studies stored in either the data or file store"""
+        # TODO implement switch for file or data store
+        return json.loads(self.s.get(self.server_address + '/Subjectids?').text)
+
+    def get_visitids(self, studyid=None, versionid=None, subjectid=None, store='Data'):
         """Get the visitids associated with a particular studyid,versionid.
         Either from data store (default) or file store"""
         # TODO implement switch for file or data store
         return json.loads(self.s.get(self.server_address + '/Visitids?' +
                                      append_hierarchical_specifiers(studyid, versionid, subjectid)).text)
 
-    def get_versionids(self, studyid, versionid, subjectid, store='Data'):
+    def get_versionids(self, studyid=None, versionid=None, subjectid=None, store='Data'):
         """Get the visitids associated with a particular studyid,versionid.
         Either from data store (default) or file store"""
         # TODO implement switch for file or data store

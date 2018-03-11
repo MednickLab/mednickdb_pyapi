@@ -1,27 +1,41 @@
 from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
 import pytest
+import time
 
 
 def pytest_namespace():
     return {'usecase_1_filedata': None}
 
 
-@pytest.mark.dependency()
+def test_clear_test_study():
+    med_api = MednickAPI('http://localhost:8001', 'test_grad_account@uci.edu', 'Pass1234')
+    fids = med_api.get_file_ids(studyid='TEST')
+    for fid in fids:
+        med_api.delete_file(fid)
+        med_api.delete_data_associated_with_file(fid)
+    fids2 = med_api.get_file_ids(studyid='TEST')
+    assert (fids2 == [])
+    deleted_fids = med_api.get_deleted_file_ids(studyid='TEST')
+    assert ((set(fids) - set(deleted_fids)) == 0)
+
+
+@pytest.mark.dependency(['test_clear_test_study'])
 def test_usecase_1():
     """Runs usecase one from the mednickDB_usecase document (fid=)"""
     #a)
     med_api = MednickAPI('http://localhost:8001', 'test_ra_account@uci.edu', 'Pass1234')
     with open('testfiles/sleepfile.edf') as sleepfile:
-        fid = med_api.upload_file(sleepfile, filename='sleepfile.edf', fileformat='sleep', studyid='PSTIM', versionid=1, subjectid=1, visitid=1, sessionid=1, filetype='raw sleep')
+        fid = med_api.upload_file(sleepfile, filename='sleepfile.edf', fileformat='sleep', studyid='TEST', versionid=1, subjectid=1, visitid=1, sessionid=1, filetype='raw sleep')
         downloaded_sleepfile= med_api.download_file(fid)
         assert (downloaded_sleepfile == sleepfile)
 
     #b)
+    time.sleep(5)  # Give db 5 seconds to update
     file_data = med_api.get_file_info(fid)
     file_data_real = {
         'filename': 'sleepfile.edf',
-        'filepath': 'PSTIM/1/1/1/1/',
-        'studyid': 'PSTIM',
+        'filepath': 'TEST/1/1/1/1/',
+        'studyid': 'TEST',
         'versionid': 1,
         'subjectid': 1,
         'visitid': 1,
@@ -43,30 +57,34 @@ def test_usecase_2():
                                   filename='sleepfile.edf',
                                   filetype='demographics',
                                   fileformat='tabular',
-                                  studyid='PSTIM',
+                                  studyid='TEST',
                                   versionid=1)
         downloaded_demo = med_api.download_file(fid)
         assert (downloaded_demo == demofile)
 
     #c)
+    time.sleep(5)  # Give db 5 seconds to update
     file_data = med_api.get_file_info(fid)
     file_data_real = {
         'filename': 'sleepfile.edf',
-        'filepath': 'PSTIM/1/1/',
-        'studyid': 'PSTIM',
+        'filepath': 'TEST/1/1/',
+        'studyid': 'TEST',
         'versionid': 1,
     }
+    assert (file_data == file_data_real)
 
     #d)
-    data = med_api.get_data(studyid='PSTIM', versionid=1)
-    correct_row1 = {'studyid':'PSTIM','versionid':1,'subjectid':1,'age':23, 'sex':'F', 'bmi':23}
+    time.sleep(5)  # Give db 5 seconds to update
+    data = med_api.get_data(studyid='TEST', versionid=1)
+    correct_row1 = {'studyid':'TEST', 'versionid':1, 'subjectid':1, 'age':23, 'sex':'F', 'bmi':23}
     correct_row1.update(pytest.usecase_1_filedata)
-    correct_row2 = {'studyid': 'PSTIM', 'versionid': 1, 'subjectid': 2, 'age': 19, 'sex': 'M', 'bmi': 20}
+    correct_row2 = {'studyid': 'TEST', 'versionid': 1, 'subjectid': 2, 'age': 19, 'sex': 'M', 'bmi': 20}
     correct_data = [correct_row1, correct_row2]
     assert (correct_data == data)
 
     #e)
-    data_raw_sleep = med_api.get_data(studyid='PSTIM', versionid=1, filetype='raw sleep')
+    time.sleep(5)  # Give db 5 seconds to update
+    data_raw_sleep = med_api.get_data(studyid='TEST', versionid=1, filetype='raw sleep')
     assert (data_raw_sleep == pytest.usecase_1_filedata)
 
     pytest.usecase_2_row1 = correct_row1
@@ -78,15 +96,17 @@ def test_usecase_2():
 def test_usecase_3():
     #a)
     med_api = MednickAPI('http://localhost:8001', 'test_ra_account@uci.edu', 'Pass1234')
-    med_api.upload_data(data={'accuracy': 0.9}, studyid='PSTIM', versionid=1, subjectid=2, visitid=1, sessionid=1, filetype='MemTaskA')
+    med_api.upload_data(data={'accuracy': 0.9}, studyid='TEST', versionid=1, subjectid=2, visitid=1, sessionid=1, filetype='MemTaskA')
 
     #b)
+    time.sleep(5)  # Give db 5 seconds to update
     correct_fids = [pytest.usecase_1_fid, pytest.usecase_2_fid]
-    fids = med_api.get_file_ids(subjectid='PSTIM', versionid=1)
+    fids = med_api.get_file_ids(subjectid='TEST', versionid=1)
     assert(all([True if fid in correct_fids else False for fid in fids]))
 
     #c)
-    data = med_api.get_data(studyid='PSTIM', versionid=1)
+    time.sleep(5)  # Give db 5 seconds to update
+    data = med_api.get_data(studyid='TEST', versionid=1)
     correct_row_2 = pytest.usecase_2_row2
     correct_row_2.update({'accuracy': 0.9})
     correct_data = [pytest.usecase_2_row1, correct_row_2]
@@ -101,18 +121,19 @@ def test_usecase_4():
 
     #b)
     with open('testfile/scorefile1.mat') as scorefile1:
-        fid1 = med_api.upload_file(scorefile1, filename='sleepfile.edf', fileformat='scorefile', studyid='PSTIM', versionid=1,
+        fid1 = med_api.upload_file(scorefile1, filename='sleepfile.edf', fileformat='scorefile', studyid='TEST', versionid=1,
                                   subjectid=1, visitid=1, sessionid=1, filetype='scorefile')
 
     with open('testfile/scorefile2.mat') as scorefile2:
-        fid2 = med_api.upload_file(scorefile2, filename='sleepfile.edf', fileformat='scorefile', studyid='PSTIM', versionid=1,
+        fid2 = med_api.upload_file(scorefile2, filename='sleepfile.edf', fileformat='scorefile', studyid='TEST', versionid=1,
                                   subjectid=1, visitid=2, sessionid=1, filetype='scorefile')
 
     scorefile1_data = {} #TODO add file data here
     scorefile2_data = {}
 
     # c)
-    data = med_api.get_data(studyid='PSTIM', versionid=1)
+    time.sleep(5)  # Give db 5 seconds to update
+    data = med_api.get_data(studyid='TEST', versionid=1)
     correct_row_1 = pytest.usecase_2_row1
     correct_row_2 = scorefile1_data.update(pytest.usecase_3_row2)
     correct_row_3 = scorefile2_data.update(pytest.usecase_2_row2)
@@ -127,8 +148,57 @@ def test_usecase_4():
 def test_usecase_5():
     #a)
     med_api = MednickAPI('http://localhost:8001', 'test_grad_account@uci.edu', 'Pass1234')
-    data = med_api.search_datastore(query_string='studyid=PSTIM, accuracy>0.9')
+    data = med_api.search_datastore(query_string='studyid=TEST, accuracy>0.9')
     assert (data == pytest.usecase_4_row2)
+
+
+def test_get_specifiers():
+    med_api = MednickAPI('http://localhost:8001', 'test_grad_account@uci.edu', 'Pass1234')
+    sids = med_api.get_studyids()
+    assert ('TEST' in sids)
+
+    vids = med_api.get_versionids(studyid='TEST')
+    assert (vids == [1])
+
+    sids = med_api.get_subjectids(studyid='TEST')
+    assert (sids == [1, 2])
+
+    vids = med_api.get_visitids(studyid='TEST')
+    assert (vids == [1, 2])
+
+    sids = med_api.get_sessionids(studyid='TEST')
+    assert (sids == [1])
+
+    filetypes = med_api.get_filetypes(studyid='TEST')
+    assert (filetypes == ['raw sleep', 'scorefile', 'demographics', 'MemTaskA'])
+
+
+def test_update_file_info():
+    med_api = MednickAPI('http://localhost:8001', 'test_grad_account@uci.edu', 'Pass1234')
+    fids = med_api.get_file_ids(studyid='TEST')
+    file_info_1 = med_api.get_file_info(fids[0])
+    to_add = {'test_key':'test_value'}
+    med_api.update_file_info(fid=fids[0], file_info=to_add)
+    file_info_1.update(to_add)
+    time.sleep(5) #Give db 5 seconds to update
+
+    file_info_2 = med_api.get_file_info(fids[0])
+    assert (file_info_2 == file_info_1)
+
+
+def test_parsing_status():
+    med_api = MednickAPI('http://localhost:8001', 'test_grad_account@uci.edu', 'Pass1234')
+    fids = med_api.get_file_ids(studyid='TEST')
+    med_api.update_parsed_status(fids[0], False)
+    time.sleep(5)
+    fids2 = med_api.get_unparsed_files()
+    assert (fids[0] in fids2)
+
+
+
+
+
+
 
 
 

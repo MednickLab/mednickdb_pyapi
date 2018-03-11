@@ -10,7 +10,7 @@ def test_login():
 def test_upload_and_download_file():
     med_api = MednickAPI('http://localhost:8001', 'bdyetton@hotmail.com', 'Pass1234')
     with open('scorefile1.mat') as uploaded_version:
-        fid = med_api.upload_file(uploaded_version, 'TestFile.yay', 'PSTIM', 1, 1)
+        fid = med_api.upload_file(uploaded_version, 'TestFile.yay', 'TEST', 1, 1)
         downloaded_version = med_api.download_file(fid)
         assert(downloaded_version == uploaded_version)
 
