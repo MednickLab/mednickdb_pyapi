@@ -1,21 +1,35 @@
 import requests
 import json
 import datetime
-import numpy
+#import numpy
 import re
 import dateutil.parser
+import _io
+import base64
 
+#TODO use kwargs instead of a long list of specifiers
+
+param_map = {}
+#     'studyid':'fileStudy',
+#     'versionid':'fileVersion',
+#     'subjectid':'fileSubject',
+#     'visitid':'fileVisit',
+#     'sessionid':'fileSession',
+#     'filetype':'fileType',
+#     'fileformat':'fileFormat',
+#     'fid':'sourceID'
+# }
 
 class MyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, (datetime.datetime, datetime.date)):
             return obj.isoformat()
-        if isinstance(obj, numpy.integer):
-            return int(obj)
-        elif isinstance(obj, numpy.floating):
-            return float(obj)
-        elif isinstance(obj, numpy.ndarray):
-            return obj.tolist()
+        # if isinstance(obj, numpy.integer): #TODO test
+        #     return int(obj)
+        # elif isinstance(obj, numpy.floating):
+        #     return float(obj)
+        # elif isinstance(obj, numpy.ndarray):
+        #     return obj.tolist()
         else:
             return super(MyEncoder, self).default(obj)
 
@@ -35,26 +49,20 @@ class MyDecoder(json.JSONDecoder): #TODO. test this!
         return dct
 
 
-def append_hierarchical_specifiers(studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
-    base_str = ''
-    if studyid:
-        base_str = base_str + '&studyid=' + studyid
-    if versionid:
-        base_str = base_str + '&versionid=' + versionid
-    if subjectid:
-        base_str = base_str + '&subjectid=' + subjectid
-    if visitid:
-        base_str = base_str + '&visitid=' + visitid
-    if sessionid:
-        base_str = base_str + '&sessionid=' + sessionid
-    if filetype:
-        base_str = base_str + '&filetype=' + filetype
-    return base_str
+def _json_loads(ret):
+    try:
+        ret.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        raise Exception('Server Replied "'+ret.content.decode("utf-8")+'"') from e
+    return json.loads(ret.content, cls=MyDecoder)
 
 
-def extract_hierarchical_specifiers(obj):
-    specifier_keys = ['studyid', 'versionid', 'subjectid', 'visitid', 'sessionid', 'filetype']
-    return {key: value for key, value in obj if key in specifier_keys}
+def _parse_locals_to_data_packet(locals_dict):
+    locals_dict.pop('self')
+    if 'kwargs' in locals_dict:
+        kwargs = locals_dict.pop('kwargs')
+        locals_dict.update(kwargs)
+    return {(param_map[k] if k in param_map else k): v for k, v in locals_dict.items()}
 
 
 class MednickAPI:
@@ -66,158 +74,179 @@ class MednickAPI:
         self.token, self.usertype = self.login(username, password)
         print('Successfully connected to server at', self.server_address, 'with', self.usertype, 'privileges')
 
+    @staticmethod
+    def extract_var(list_of_dicts, var):
+        return [d[var] for d in list_of_dicts if var in d]
+
     def login(self, username, password):
         """Login to the server. Returns login token and usertype (privilages)"""
         # FIXME i dont really understand how login works, so this will probably change
         # self.username = username
-        # base_str = self.server_address + '/Login?' + 'Username=' + username + '&Password=' + password
-        # ret = json.loads(self.s.post(base_str))
+        # base_str = self.server_address + '/Login?' + 'Username']=username + '&Password']=password
+        # ret = _json_loads(self.s.post(base_str))
         # return ret['token'], ret['usertype']
         return True, 'admin'
 
-    def get_file_ids(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
-        """Retrieves a list of files ids for files in the file store that match the above specifiers"""
-        base_str = self.server_address + '/Files?' + \
-                   append_hierarchical_specifiers(studyid, versionid, subjectid, visitid, sessionid, filetype)
-        return json.loads(self.s.get(base_str).text)
+    # File related functions
+    def upload_file(self, fileObject, fileFormat, fileType, fileName=None, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None):
+        """Upload a file data to the filestore in the specified location. File_data should be convertable to json.
+        If this is a brand new file, then add, if it exists, then overwrite. This shoudl return file id"""
+        data_packet = _parse_locals_to_data_packet(locals())
+        files = {'fileObject': data_packet.pop('fileObject')}
+        ret = self.s.post(url=self.server_address + '/files/upload', data=data_packet, files=files)
+        ids = _json_loads(ret)['insertedIds']
+        return [id for _, id in sorted(ids.items())][0]
 
-    def get_deleted_file_ids(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
-        """Retrieves a list of fids for deleted files from the file store that match the above specifiers"""
-        base_str = self.server_address + '/DeletedFiles?' + \
-                   append_hierarchical_specifiers(studyid, versionid, subjectid, visitid, sessionid, filetype)
-        return json.loads(self.s.get(base_str).text)
+    def update_file_info(self, id, fileFormat, fileType, studyid=None):
+        """Unsure why this is useful. TODO ask juan"""
+        data_packet = _parse_locals_to_data_packet(locals())
+        ret = self.s.put(url=self.server_address + '/files/upload', data=data_packet)
+        return _json_loads(ret)
+
+    def delete_file(self, fid):
+        """Delete a file from the filestore"""
+        self.s.delete(self.server_address + '/files/expire', data={'id':fid})
+
+    def get_files(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
+        """Retrieves a list of files ids for files in the file store that match the above specifiers"""
+        data_packet = _parse_locals_to_data_packet(locals())
+        return _json_loads(self.s.get(url=self.server_address + '/files', params=data_packet))
+
+    def get_single_file(self, fid):
+        """Get the meta data associated with a file id (i.e. the data associated with this id in the filestore)"""
+        data_packet = _parse_locals_to_data_packet(locals())
+        return _json_loads(self.s.get(url=self.server_address + '/files/info', params={'id':fid}))
 
     def download_file(self, fid):
         """Downloads a file that matches the file id as binary data"""
         # TODO, may need to convert this
-        return json.loads(self.s.get(self.server_address + '/DownloadFile?' + 'id=' + fid).text)
+        return _json_loads(self.s.get(url=self.server_address + '/files/download', params={'id': fid}))
 
-    def get_file_info(self, fid):
-        """Get the meta data associated with a file id (i.e. the data associated with this id in the filestore)"""
-        return json.loads(self.s.get(self.server_address + '/FileInfo?' + 'id=' + fid).text, cls=MyDecoder)
+    def get_deleted_files(self):
+        """Retrieves a list of fids for deleted files from the file store that match the above specifiers"""
+        return _json_loads(self.s.get(url=self.server_address + '/files/expired'))
 
-    def upload_file(self, file_data, fileformat, filename=None, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
-        """Upload a file data to the filestore in the specified location. File_data should be convertable to json.
-        If this is a brand new file, then add, if it exists, then overwrite. This shoudl return file id"""
-        # TODO test this. Do we need a filename?
-        ret = self.s.post(self.server_address + '/FileUpload?' +
-                    append_hierarchical_specifiers(studyid, versionid, subjectid, visitid, sessionid, filetype) +
-                    '&FileName=' + filename +
-                    '&FileFormat'+ fileformat +
-                    '&FileData=' + json.dumps(file_data, cls=MyEncoder))
-        return json.loads(ret)['id']
+    def get_unparsed_files(self):
+        """Return a list of fid's for unparsed files"""
+        return _json_loads(self.s.get(self.server_address + '/files/unparsed'))
 
-    def update_file_info(self, fid, file_info):
-        """Add meta data to a file. file_info should be key:value pairs. already existing keys will be overwritten"""
-        self.s.post(self.server_address + '/UpdateFileInfo?' +
-                    'id=' + fid +
-                    '&FileInfo=' + json.dumps(file_info, cls=MyEncoder))
+    def get_parsed_files(self):
+        """Return a list of fid's for unparsed files"""
+        return _json_loads(self.s.get(self.server_address + '/files/parsed'))
 
-    def upload_data(self, data, fid=None, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
+    def get_studyids(self, store="data"):
+        """Get a list of studies stored in either the data or file store"""
+        return _json_loads(self.s.get(self.server_address + '/' + store + '/studies'))
+
+    def get_versionids(self, studyid=None, versionid=None, subjectid=None, store='data'):
+        """Get the visitids associated with a particular studyid,versionid.
+        Either from data store (default) or file store"""
+        params = _parse_locals_to_data_packet(locals())
+        return _json_loads(self.s.get(self.server_address + '/'+store+'/versions', params=params))
+
+    def get_subjectids(self, studyid=None, versionid=None):
+        """Get a list of studies stored in either the data or file store"""
+        params = _parse_locals_to_data_packet(locals())
+        return _json_loads(self.s.get(self.server_address + '/data/subjects', params=params))
+
+    def get_visitids(self, store, studyid=None, versionid=None, subjectid=None):
+        """Get the visitids associated with a particular studyid,versionid.
+        Either from data store (default) or file store"""
+        params = _parse_locals_to_data_packet(locals())
+        return _json_loads(self.s.get(self.server_address + '/' + store + '/visits', params=params))
+
+    def get_sessionids(self, store, studyid=None, versionid=None, subjectid=None, visitid=None):
+        """Get the sessionids associated with a particular studyid,versionid,visitid.
+        Either from data store (default) or file store"""
+        params = _parse_locals_to_data_packet(locals())
+        return _json_loads(self.s.get(self.server_address + '/' + store + '/sessions', params=params))
+
+    def get_filetypes(self, store, studyid, versionid=None, subjectid=None, visitid=None, sessionid=None):
+        """Get the filetypes associated with that level of the hierarchy from the data or file store"""
+        # TODO implement switch for file or data store
+        params = _parse_locals_to_data_packet(locals())
+        return _json_loads(self.s.get(self.server_address + '/' + store + '/types', params=params))
+
+    #Data Functions
+    def upload_data(self, data, studyid, versionid, fileType, fid=None, subjectid=None, visitid=None, sessionid=None):
         """Upload a data to the datastore in the specified location. data should be a single object of key:values and convertable to json.
         Specifiers like studyid etc contained in the data object will be extracted and used before any in the function arguments.
         If this is a new location (no data exists), then add, if it exists, merge or overwrite.
         If this data came from a particular file in the server, then please add a file id to link back to that file"""
-        specifiers = {'studyid':studyid,
-                      'versionid':versionid,
-                      'subjectid':subjectid,
-                      'visitid':visitid,
-                      'sessionid':sessionid,
-                      'filetype':filetype}
-        specifiers.update(extract_hierarchical_specifiers(data))
-        self.s.post(self.server_address + '/DataUpload?' +
-                    append_hierarchical_specifiers(**specifiers) +
-                    '&Data=' + json.dumps(data, cls=MyEncoder) +
-                    '&FileId=' + fid)
+        data_packet = _parse_locals_to_data_packet(locals())
+        data_packet['data'] = json.dumps(data_packet['data'], cls=MyEncoder)
+        self.s.post(self.server_address + '/data/upload', data=data_packet)
 
     def get_data(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
         """Get all the data in the datastore at the specified location. Return is python dictionary"""
-        ret = self.s.post(
-            self.server_address + '/Data?' + append_hierarchical_specifiers(studyid, versionid, subjectid, visitid, sessionid, filetype))
-        return json.loads(ret, cls=MyDecoder)
+        params = _parse_locals_to_data_packet(locals())
+        return _json_loads(self.s.get(self.server_address + '/data', params=params))
 
     def delete_data(self, studyid, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
         """Delete all data at a particular level of the hierarchy"""
-        self.s.post(self.server_address + '/DeleteFileData?' + append_hierarchical_specifiers(studyid, versionid, subjectid, visitid, sessionid, filetype))
+        params = _parse_locals_to_data_packet(locals())
+        return _json_loads(self.s.get(self.server_address + '/data/expired', params=params))
 
-    def get_deleted_data(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
-        """Get all the data in the datastore at the specified location. Return is python dictionary"""
-        ret = self.s.post(
-            self.server_address + '/DeletedData?' + append_hierarchical_specifiers(studyid, versionid, subjectid, visitid, sessionid,
-                                                                                   filetype))
-        return json.loads(ret, cls=MyDecoder)
-
-    def delete_file(self, fid):
-        """Delete a file from the filestore"""
-        self.s.post(self.server_address + '/DeleteFile?id=' + fid)
-
-    def delete_data_associated_with_file(self, fid):
-        """Delete data from the database that is associated with a particular file id (i.e. data that was extracted from that file)"""
-        self.s.post(self.server_address + '/DeleteFileData?id=' + fid)
-
-    # def reinstate_data(self, studyid, versionid=None, subjectid=None, visitid=None, sessionid=None): TODO
-
-    def get_data_associated_with_file(self, fid):
+    def get_data_from_single_file(self, fid):
         """Get the data in the datastore associated with a file (i.e. get the data that was extracted from that file on upload)"""
-        ret = self.s.post(self.server_address + '/FileData?id=' + fid)
-        return json.loads(ret, cls=MyDecoder)
+        raise NotImplementedError()
+        # ret = self.s.post(self.server_address + '/FileData?id='+fid)
+        # return _json_loads(ret, cls=MyDecoder)
 
-    def get_filetypes(self, studyid, versionid=None, subjectid=None, visitid=None, sessionid=None, store='File'):
-        """Get the filetypes associated with that level of the hierarchy from the data or file store"""
-        # TODO implement switch for file or data store
-        return json.loads(self.s.get(self.server_address + '/FileTypes' +
-                                     append_hierarchical_specifiers(studyid, versionid, subjectid, visitid, sessionid)).text)
-
-    def get_sessionids(self, studyid=None, versionid=None, subjectid=None, visitid=None, store='Data'):
-        """Get the sessionids associated with a particular studyid,versionid,visitid.
-        Either from data store (default) or file store"""
-        # TODO implement switch for file or data store
-        return json.loads(self.s.get(self.server_address + '/Sessionids?' +
-                                     append_hierarchical_specifiers(studyid, versionid, subjectid, visitid)).text)
-
-    def get_studyids(self, store="Data"):
-        """Get a list of studies stored in either the data or file store"""
-        # TODO implement switch for file or data store
-        return json.loads(self.s.get(self.server_address + '/Studyids?').text)
-
-    def get_subjectids(self, studyid=None, versionid=None, store="Data"):
-        """Get a list of studies stored in either the data or file store"""
-        # TODO implement switch for file or data store
-        return json.loads(self.s.get(self.server_address + '/Subjectids?').text)
-
-    def get_visitids(self, studyid=None, versionid=None, subjectid=None, store='Data'):
-        """Get the visitids associated with a particular studyid,versionid.
-        Either from data store (default) or file store"""
-        # TODO implement switch for file or data store
-        return json.loads(self.s.get(self.server_address + '/Visitids?' +
-                                     append_hierarchical_specifiers(studyid, versionid, subjectid)).text)
-
-    def get_versionids(self, studyid=None, versionid=None, subjectid=None, store='Data'):
-        """Get the visitids associated with a particular studyid,versionid.
-        Either from data store (default) or file store"""
-        # TODO implement switch for file or data store
-        return json.loads(self.s.get(self.server_address + '/Versionids?' +
-                                     append_hierarchical_specifiers(studyid, versionid, subjectid)).text)
+    def delete_data_from_single_file(self, fid):
+        """Deletes the data in the datastore associated with a file (i.e. get the data that was extracted from that file on upload)"""
+        raise NotImplementedError()
+        # ret = self.s.post(self.server_address + '/FileData?id='+fid)
+        # return _json_loads(ret, cls=MyDecoder)
 
     def update_parsed_status(self, id, status):
+        raise NotImplementedError()
         """Change the parsed status of a file. Status is True when parsed or False otherwise"""
-        self.s.post(self.server_address + '/UpdateParsedStatus?id=' + id + '&Status=' + status)
-
-    def get_unparsed_files(self):
-        """Return a list of fid's for unparsed files"""
-        return json.loads(self.s.post(self.server_address + '/UnparsedFiles?'))
+        #self.s.get(self.server_address + '/updateParsedStatus?id']=id + '&Status='+status)
 
     def search_filestore(self, query_string):
         """Return a list of file ids that match the query"""
-        ret = self.s.post(self.server_address + '/QueryFile?query=' + query_string)
-        return json.loads(ret)
+        raise NotImplementedError()
+        # ret = self.s.get(self.server_address + '/getFiles?query']=query_string)
+        # return _json_loads(ret)
 
     def search_datastore(self, query_string):
         """Return a data rows (as python objects) that match the query"""
-        ret = self.s.post(self.server_address + '/QueryData?query=' + query_string)
-        return json.loads(ret, cls=MyDecoder)
+        raise NotImplementedError()
+        # ret = self.s.get(self.server_address + '/getProfiles?query']=query_string)
+        # return _json_loads(ret, cls=MyDecoder)
 
     def __del__(self):
         # TODO, this should trigger logout??
         pass
+
+
+if __name__ == '__main__':
+    med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
+    some_files = med_api.get_files()
+    print('There are', len(some_files), 'files on the server')
+    some_files = med_api.get_deleted_files()
+    print('There are', len(some_files), 'deleted files on the server')
+    with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
+        fid = med_api.upload_file(fileObject=uploaded_version,
+                                  fileFormat='testformat',
+                                  fileName='TestFile2.yay',
+                                  fileType='Yo',
+                                  studyid='TEST',
+                                  versionid=str(1))
+        print(fid)
+        print('There are',len(med_api.get_unparsed_files()), 'unparsed files')
+        print('There are', len(med_api.get_parsed_files()), 'parsed files')
+        try:
+            print('There are', med_api.get_studyids('files'), 'studies')
+        except requests.exceptions.HTTPError as e:
+            print(e)
+        try:
+            print('There are', med_api.get_visitids('files', studyid='TEST'), 'visits in TEST')
+        except requests.exceptions.HTTPError as e:
+            print(e)
+        #downloaded_version = med_api.download_file(fid[0])
+    #     assert(downloaded_version == uploaded_version)
+
+
 
