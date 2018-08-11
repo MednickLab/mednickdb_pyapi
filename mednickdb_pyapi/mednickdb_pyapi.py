@@ -7,24 +7,18 @@ import dateutil.parser
 import _io
 import base64
 
-#TODO use kwargs instead of a long list of specifiers
+# TODO use kwargs instead of a long list of specifiers
 
-param_map = {}
-#     'studyid':'fileStudy',
-#     'versionid':'fileVersion',
-#     'subjectid':'fileSubject',
-#     'visitid':'fileVisit',
-#     'sessionid':'fileSession',
-#     'filetype':'fileType',
-#     'fileformat':'fileFormat',
-#     'fid':'sourceID'
-# }
+param_map = {
+    'fid':'id'
+}
+
 
 class MyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, (datetime.datetime, datetime.date)):
             return obj.isoformat()
-        # if isinstance(obj, numpy.integer): #TODO test
+        # if isinstance(obj, numpy.integer):  # TODO test
         #     return int(obj)
         # elif isinstance(obj, numpy.floating):
         #     return float(obj)
@@ -34,14 +28,14 @@ class MyEncoder(json.JSONEncoder):
             return super(MyEncoder, self).default(obj)
 
 
-class MyDecoder(json.JSONDecoder): #TODO. test this!
+class MyDecoder(json.JSONDecoder):  # TODO. test this!
     def __init__(self, *args, **kargs):
         json.JSONDecoder.__init__(self, object_hook=self.datetime_parser,
-                             *args, **kargs)
+                                  *args, **kargs)
 
     def datetime_parser(self, dct):
         for k, v in dct.items():
-            if isinstance(v, str) and re.search('[0-9]*-[0-9]*-[0-9]*T[0-9]*:[0-9]*:',v):
+            if isinstance(v, str) and re.search('[0-9]*-[0-9]*-[0-9]*T[0-9]*:[0-9]*:', v):
                 try:
                     dct[k] = dateutil.parser.parse(v)
                 except:
@@ -53,7 +47,7 @@ def _json_loads(ret):
     try:
         ret.raise_for_status()
     except requests.exceptions.HTTPError as e:
-        raise Exception('Server Replied "'+ret.content.decode("utf-8")+'"') from e
+        raise Exception('Server Replied "' + ret.content.decode("utf-8") + '"') from e
     return json.loads(ret.content, cls=MyDecoder)
 
 
@@ -67,10 +61,11 @@ def _parse_locals_to_data_packet(locals_dict):
 
 class MednickAPI:
     def __init__(self, server_address, username, password):
-        '''server_address address constructor'''
+        """server_address address constructor"""
         self.server_address = server_address
         self.s = requests.session()
         self.username = username
+        self.login_token = None
         self.token, self.usertype = self.login(username, password)
         print('Successfully connected to server at', self.server_address, 'with', self.usertype, 'privileges')
 
@@ -80,32 +75,34 @@ class MednickAPI:
 
     def login(self, username, password):
         """Login to the server. Returns login token and usertype (privilages)"""
-        # FIXME i dont really understand how login works, so this will probably change
+        # TODO
         # self.username = username
         # base_str = self.server_address + '/Login?' + 'Username']=username + '&Password']=password
         # ret = _json_loads(self.s.post(base_str))
         # return ret['token'], ret['usertype']
+        # self.login_token = True
         return True, 'admin'
 
     # File related functions
-    def upload_file(self, fileObject, fileFormat, fileType, fileName=None, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None):
+    def upload_file(self, fileobject, fileformat, filetype, filename=None, studyid=None, versionid=None, subjectid=None,
+                    visitid=None, sessionid=None):
         """Upload a file data to the filestore in the specified location. File_data should be convertable to json.
         If this is a brand new file, then add, if it exists, then overwrite. This shoudl return file id"""
         data_packet = _parse_locals_to_data_packet(locals())
-        files = {'fileObject': data_packet.pop('fileObject')}
+        files = {'fileobject': data_packet.pop('fileobject')}
         ret = self.s.post(url=self.server_address + '/files/upload', data=data_packet, files=files)
-        ids = _json_loads(ret)['insertedIds']
-        return [id for _, id in sorted(ids.items())][0]
+        fids = _json_loads(ret)['insertedIds']
+        return [fid for _, fid in sorted(fids.items())]
 
-    def update_file_info(self, id, fileFormat, fileType, studyid=None):
-        """Unsure why this is useful. TODO ask juan"""
+    def update_file_info(self, fid, fileformat, filetype, studyid=None):
+        """Unsure why this is useful. TODO ask Juan"""
         data_packet = _parse_locals_to_data_packet(locals())
-        ret = self.s.put(url=self.server_address + '/files/upload', data=data_packet)
+        ret = self.s.put(url=self.server_address + '/files/update', data=data_packet)
         return _json_loads(ret)
 
     def delete_file(self, fid):
         """Delete a file from the filestore"""
-        self.s.delete(self.server_address + '/files/expire', data={'id':fid})
+        self.s.delete(self.server_address + '/files/expire', data={'id': fid})
 
     def get_files(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
         """Retrieves a list of files ids for files in the file store that match the above specifiers"""
@@ -115,7 +112,7 @@ class MednickAPI:
     def get_single_file(self, fid):
         """Get the meta data associated with a file id (i.e. the data associated with this id in the filestore)"""
         data_packet = _parse_locals_to_data_packet(locals())
-        return _json_loads(self.s.get(url=self.server_address + '/files/info', params={'id':fid}))
+        return _json_loads(self.s.get(url=self.server_address + '/files/info', params={'id': fid}))
 
     def download_file(self, fid):
         """Downloads a file that matches the file id as binary data"""
@@ -138,14 +135,14 @@ class MednickAPI:
         """Get a list of studies stored in either the data or file store"""
         return _json_loads(self.s.get(self.server_address + '/' + store + '/studies'))
 
-    def get_versionids(self, studyid=None, versionid=None, subjectid=None, store='data'):
+    def get_versionids(self, store, studyid=None, versionid=None, subjectid=None):
         """Get the visitids associated with a particular studyid,versionid.
         Either from data store (default) or file store"""
         params = _parse_locals_to_data_packet(locals())
-        return _json_loads(self.s.get(self.server_address + '/'+store+'/versions', params=params))
+        return _json_loads(self.s.get(self.server_address + '/' + store + '/versions', params=params))
 
     def get_subjectids(self, studyid=None, versionid=None):
-        """Get a list of studies stored in either the data or file store"""
+        """Get a list of studies stored in either the data store"""
         params = _parse_locals_to_data_packet(locals())
         return _json_loads(self.s.get(self.server_address + '/data/subjects', params=params))
 
@@ -167,8 +164,8 @@ class MednickAPI:
         params = _parse_locals_to_data_packet(locals())
         return _json_loads(self.s.get(self.server_address + '/' + store + '/types', params=params))
 
-    #Data Functions
-    def upload_data(self, data, studyid, versionid, fileType, fid=None, subjectid=None, visitid=None, sessionid=None):
+    # Data Functions
+    def upload_data(self, data, studyid, versionid, filetype, fid=None, subjectid=None, visitid=None, sessionid=None):
         """Upload a data to the datastore in the specified location. data should be a single object of key:values and convertable to json.
         Specifiers like studyid etc contained in the data object will be extracted and used before any in the function arguments.
         If this is a new location (no data exists), then add, if it exists, merge or overwrite.
@@ -188,21 +185,23 @@ class MednickAPI:
         return _json_loads(self.s.get(self.server_address + '/data/expired', params=params))
 
     def get_data_from_single_file(self, fid):
-        """Get the data in the datastore associated with a file (i.e. get the data that was extracted from that file on upload)"""
+        """ Get the data in the datastore associated with a file
+        (i.e. get the data that was extracted from that file on upload)"""
         raise NotImplementedError()
         # ret = self.s.post(self.server_address + '/FileData?id='+fid)
         # return _json_loads(ret, cls=MyDecoder)
 
     def delete_data_from_single_file(self, fid):
-        """Deletes the data in the datastore associated with a file (i.e. get the data that was extracted from that file on upload)"""
+        """ Deletes the data in the datastore associated with a file
+        (i.e. get the data that was extracted from that file on upload)"""
         raise NotImplementedError()
         # ret = self.s.post(self.server_address + '/FileData?id='+fid)
         # return _json_loads(ret, cls=MyDecoder)
 
-    def update_parsed_status(self, id, status):
-        raise NotImplementedError()
+    def update_parsed_status(self, fid, status):
         """Change the parsed status of a file. Status is True when parsed or False otherwise"""
-        #self.s.get(self.server_address + '/updateParsedStatus?id']=id + '&Status='+status)
+        raise NotImplementedError()
+        # self.s.get(self.server_address + '/updateParsedStatus?id']=id + '&Status='+status)
 
     def search_filestore(self, query_string):
         """Return a list of file ids that match the query"""
@@ -224,29 +223,24 @@ class MednickAPI:
 if __name__ == '__main__':
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
     some_files = med_api.get_files()
-    print('There are', len(some_files), 'files on the server')
-    some_files = med_api.get_deleted_files()
-    print('There are', len(some_files), 'deleted files on the server')
+    print('There are', len(some_files), 'files on the server before upload')
+    print('There are', len(med_api.get_unparsed_files()), 'unparsed files before upload')
+    # some_files = med_api.get_deleted_files()
+    # print('There are', len(some_files), 'deleted files on the server')
     with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
-        fid = med_api.upload_file(fileObject=uploaded_version,
-                                  fileFormat='testformat',
-                                  fileName='TestFile2.yay',
-                                  fileType='Yo',
+        fid = med_api.upload_file(fileobject=uploaded_version,
+                                  fileformat='testformat',
+                                  filename='TestFile2.yay',
+                                  filetype='Yo',
                                   studyid='TEST',
                                   versionid=str(1))
-        print(fid)
-        print('There are',len(med_api.get_unparsed_files()), 'unparsed files')
-        print('There are', len(med_api.get_parsed_files()), 'parsed files')
-        try:
-            print('There are', med_api.get_studyids('files'), 'studies')
-        except requests.exceptions.HTTPError as e:
-            print(e)
-        try:
-            print('There are', med_api.get_visitids('files', studyid='TEST'), 'visits in TEST')
-        except requests.exceptions.HTTPError as e:
-            print(e)
-        #downloaded_version = med_api.download_file(fid[0])
+        print('We uploaded', len(fid), 'files')
+        #print(fid)
+    some_files = med_api.get_files()
+    print('There are', len(some_files), 'files on the server after upload')
+    print('There are', len(med_api.get_unparsed_files()), 'unparsed files after upload')
+    # print('There are', len(med_api.get_parsed_files()), 'parsed files')
+    # print('There are', med_api.get_studyids('files'), 'studies')
+    # print('There are', med_api.get_visitids('files', studyid='TEST'), 'visits in TEST')
+    # downloaded_version = med_api.download_file(fid[0])
     #     assert(downloaded_version == uploaded_version)
-
-
-

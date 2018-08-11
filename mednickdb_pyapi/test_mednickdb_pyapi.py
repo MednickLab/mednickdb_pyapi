@@ -12,8 +12,9 @@ def test_upload_and_download_file():
     files_on_server_before_upload = med_api.get_files()
     parsed_files_before_upload = med_api.get_unparsed_files()
     with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
-        fid = med_api.upload_file(fileObject=uploaded_version,
-                                  fileName='TestFile.yay',
+        fid = med_api.upload_file(fileobject=uploaded_version,
+                                  filename='TestFile.yay',
+                                  fileformat='sleep',
                                   studyid='TEST',
                                   subjectid=str(1),
                                   versionid=str(1))
