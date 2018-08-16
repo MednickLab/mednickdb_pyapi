@@ -1,1 +1,0 @@
-mednickdb_pyapi

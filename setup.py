@@ -8,5 +8,5 @@ setup(name='mednickdb_pyapi',
       author_email='bdyetton@gmail.com',
       license='MIT',
       packages=['mednickdb_pyapi'],
-      install_requires=['requests','pytest','pytest-dependency', 'datetime', 'numpy', 'dateutil'],
+      install_requires=['requests','pytest','pytest-dependency', 'datetime', 'numpy'],
       zip_safe=False)
