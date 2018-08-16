@@ -22,8 +22,6 @@ pyparsing==2.2.0
 PySocks==1.6.8
 pytest==3.4.2
 pytest-dependency==0.3.2
-python-crontab==2.2.8
-python-dateutil==2.5.3
 pytz==2018.3
 requests==2.18.4
 scipy==1.0.0
