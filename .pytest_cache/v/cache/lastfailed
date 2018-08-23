@@ -1,5 +1,4 @@
 {
-  "mednickdb_pyapi/test_mednickdb_pyapi.py::test_upload_and_download_file": true,
   "mednickdb_pyapi/test_mednickdb_usecases.py::test_clear_test_study": true,
   "mednickdb_pyapi/test_mednickdb_usecases.py::test_get_specifiers": true,
   "mednickdb_pyapi/test_mednickdb_usecases.py::test_parsing_status": true,

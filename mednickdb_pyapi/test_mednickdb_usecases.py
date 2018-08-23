@@ -14,11 +14,12 @@ def test_clear_test_study():
     fids = med_api.extract_var(med_api.get_files(studyid='TEST'), '_id')
     for fid in fids:
         med_api.delete_file(fid)
-        med_api.delete_data_from_single_file(fid)
-    fids2 = med_api.get_files(studyid='TEST')
+        #med_api.delete_data_from_single_file(fid) #TODO
+    fids2 = med_api.extract_var(med_api.get_files(studyid='TEST'),'_id')
+    assert fid not in fids2
     assert (fids2 == [])
-    deleted_fids = med_api.get_deleted_files(studyid='TEST')
-    assert ((set(fids) - set(deleted_fids)) == 0)
+    deleted_fids = med_api.extract_var(med_api.get_deleted_files(),'_id')#TODO studyid='TEST')
+    assert all([dfid in deleted_fids for dfid in fids])
 
 
 @pytest.mark.dependency(['test_clear_test_study'])

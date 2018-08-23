@@ -1,7 +1,7 @@
 import requests
 import json
 import datetime
-#import numpy
+import numpy
 import re
 import dateutil.parser
 import _io
@@ -18,12 +18,12 @@ class MyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, (datetime.datetime, datetime.date)):
             return obj.isoformat()
-        # if isinstance(obj, numpy.integer):  # TODO test
-        #     return int(obj)
-        # elif isinstance(obj, numpy.floating):
-        #     return float(obj)
-        # elif isinstance(obj, numpy.ndarray):
-        #     return obj.tolist()
+        if isinstance(obj, numpy.integer):  # TODO test
+            return int(obj)
+        elif isinstance(obj, numpy.floating):
+            return float(obj)
+        elif isinstance(obj, numpy.ndarray):
+            return obj.tolist()
         else:
             return super(MyEncoder, self).default(obj)
 
@@ -43,12 +43,15 @@ class MyDecoder(json.JSONDecoder):  # TODO. test this!
         return dct
 
 
-def _json_loads(ret):
+def _json_loads(ret, file=False):
     try:
         ret.raise_for_status()
     except requests.exceptions.HTTPError as e:
         raise Exception('Server Replied "' + ret.content.decode("utf-8") + '"') from e
-    return json.loads(ret.content, cls=MyDecoder)
+    if file:
+        return ret.content
+    else:
+        return json.loads(ret.content, cls=MyDecoder)
 
 
 def _parse_locals_to_data_packet(locals_dict):
@@ -84,7 +87,7 @@ class MednickAPI:
         return True, 'admin'
 
     # File related functions
-    def upload_file(self, fileobject, fileformat, filetype, filename=None, studyid=None, versionid=None, subjectid=None,
+    def upload_file(self, fileobject, fileformat, filetype, studyid=None, versionid=None, subjectid=None,
                     visitid=None, sessionid=None):
         """Upload a file data to the filestore in the specified location. File_data should be convertable to json.
         If this is a brand new file, then add, if it exists, then overwrite. This shoudl return file id"""
@@ -104,10 +107,14 @@ class MednickAPI:
         """Delete a file from the filestore"""
         self.s.delete(self.server_address + '/files/expire', data={'id': fid})
 
-    def get_files(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
+    def get_files(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None, active_only=True):
         """Retrieves a list of files ids for files in the file store that match the above specifiers"""
         data_packet = _parse_locals_to_data_packet(locals())
-        return _json_loads(self.s.get(url=self.server_address + '/files', params=data_packet))
+        active_only = data_packet.pop('active_only')
+        files = _json_loads(self.s.get(url=self.server_address + '/files', params=data_packet))
+        if active_only:
+            files = [file for file in files if file['active']]
+        return files
 
     def get_single_file(self, fid):
         """Get the meta data associated with a file id (i.e. the data associated with this id in the filestore)"""
@@ -117,15 +124,18 @@ class MednickAPI:
     def download_file(self, fid):
         """Downloads a file that matches the file id as binary data"""
         # TODO, may need to convert this
-        return _json_loads(self.s.get(url=self.server_address + '/files/download', params={'id': fid}))
+        return _json_loads(self.s.get(url=self.server_address + '/files/download', params={'id': fid}), file=True)
 
     def get_deleted_files(self):
         """Retrieves a list of fids for deleted files from the file store that match the above specifiers"""
         return _json_loads(self.s.get(url=self.server_address + '/files/expired'))
 
-    def get_unparsed_files(self):
+    def get_unparsed_files(self, active_only=True):
         """Return a list of fid's for unparsed files"""
-        return _json_loads(self.s.get(self.server_address + '/files/unparsed'))
+        files = _json_loads(self.s.get(self.server_address + '/files/unparsed'))
+        if active_only:
+            files = [file for file in files if file['active']]
+        return files
 
     def get_parsed_files(self):
         """Return a list of fid's for unparsed files"""
@@ -222,25 +232,28 @@ class MednickAPI:
 
 if __name__ == '__main__':
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
+
     some_files = med_api.get_files()
     print('There are', len(some_files), 'files on the server before upload')
     print('There are', len(med_api.get_unparsed_files()), 'unparsed files before upload')
-    # some_files = med_api.get_deleted_files()
+    some_files = med_api.get_deleted_files()
     # print('There are', len(some_files), 'deleted files on the server')
     with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
         fid = med_api.upload_file(fileobject=uploaded_version,
                                   fileformat='testformat',
-                                  filename='TestFile2.yay',
                                   filetype='Yo',
-                                  studyid='TEST',
+                                  studyid='TEST4',
                                   versionid=str(1))
-        print('We uploaded', len(fid), 'files')
-        #print(fid)
+    print('We uploaded', len(fid), 'files')
+    #print(fid)
     some_files = med_api.get_files()
     print('There are', len(some_files), 'files on the server after upload')
     print('There are', len(med_api.get_unparsed_files()), 'unparsed files after upload')
     # print('There are', len(med_api.get_parsed_files()), 'parsed files')
     # print('There are', med_api.get_studyids('files'), 'studies')
     # print('There are', med_api.get_visitids('files', studyid='TEST'), 'visits in TEST')
-    # downloaded_version = med_api.download_file(fid[0])
-    #     assert(downloaded_version == uploaded_version)
+    print(fid[0])
+    print(med_api.get_single_file(fid[0]))
+    downloaded_version = med_api.download_file(fid[0])
+    with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
+        assert(downloaded_version == uploaded_version.read())
