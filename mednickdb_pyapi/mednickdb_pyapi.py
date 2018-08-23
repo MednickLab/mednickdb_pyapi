@@ -102,7 +102,7 @@ class MednickAPI:
 
     def delete_file(self, fid):
         """Delete a file from the filestore"""
-        self.s.delete(self.server_address + '/files/expire', data={'id': fid})
+        return _json_loads(self.s.delete(self.server_address + '/files/expire', data={'id': fid}))
 
     def get_files(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
         """Retrieves a list of files ids for files in the file store that match the above specifiers"""
@@ -118,6 +118,16 @@ class MednickAPI:
         """Downloads a file that matches the file id as binary data"""
         # TODO, may need to convert this
         return _json_loads(self.s.get(url=self.server_address + '/files/download', params={'id': fid}))
+
+    def download_files(self, fids):
+        """Downloads a number of files from a list of file id's"""
+        fids_param = '*AND*'.join(fids)
+        return _json_loads(self.s.get(url=self.server_address + '/files/downloadmultiple', params={'id': fids_param}))
+
+    def delete_multiple(self, fids):
+        """Deletes a list of files coresponding to the given fileids"""
+        fids_param = '*AND*'.join(fids)
+        return _json_loads(self.s.get(url=self.server_address + '/files/expiremultiple', params={'id': fids_param}))
 
     def get_deleted_files(self):
         """Retrieves a list of fids for deleted files from the file store that match the above specifiers"""
@@ -215,13 +225,26 @@ class MednickAPI:
         # ret = self.s.get(self.server_address + '/getProfiles?query']=query_string)
         # return _json_loads(ret, cls=MyDecoder)
 
+    def purge_all_files(self, password):
+        if password == 'kiwi':
+            files = self.get_files()
+            print(len(files),'found, beginning delete...')
+            for file in files:
+                print(self.delete_file(file['_id']))
+        else:
+            print('Cannot delete all files on the server without a password!')
+
     def __del__(self):
         # TODO, this should trigger logout??
         pass
 
 
+
+
 if __name__ == '__main__':
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
+    #med_api.purge_all_files(password='kiwi')
+
     some_files = med_api.get_files()
     print('There are', len(some_files), 'files on the server before upload')
     print('There are', len(med_api.get_unparsed_files()), 'unparsed files before upload')

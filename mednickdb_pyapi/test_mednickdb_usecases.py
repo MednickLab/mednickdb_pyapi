@@ -63,24 +63,25 @@ def test_usecase_2():
                                   fileformat='tabular',
                                   studyid='TEST',
                                   versionid=1)
-        # downloaded_demo = med_api.download_file(fid)
-        # assert (downloaded_demo == demofile)
+        downloaded_demo = med_api.download_file(fid)
+        with open('testfiles/PSTIM_Demographics.xlsx', 'rb') as demofile:
+            assert downloaded_demo == demofile.read()
 
     # c)
-    time.sleep(5)  # Give db 5 seconds to update
+    time.sleep(5)  # Give file db 5 seconds to update
     file_data = med_api.get_single_file(fid)
     file_data_real = {
-        'fileName': 'PSTIM_Demographics.xlsx',
-        'filePath': 'TEST/1/1/',
-        'fileType': 'demographics',
+        'filename': 'PSTIM_Demographics.xlsx',
+        'filepath': './uploads/TEST/1/1/',
+        'filetype': 'demographics',
         'studyid': 'TEST',
-        'fileFormat': 'tabular',
+        'fileformat': 'tabular',
         'versionid': 1,
     }
-    assert (all([file_data[k] == file_data_real[k] for k in file_data_real]))
+    assert all([file_data[k] == file_data_real[k] for k in file_data_real])
 
     # d)
-    time.sleep(50)  # Give db 50 seconds to update
+    time.sleep(50)  # Give data db 50 seconds to update
     data = med_api.get_data(studyid='TEST', versionid=1)
     correct_row1 = {'studyid': 'TEST', 'versionid': 1, 'subjectid': 1, 'age': 23, 'sex': 'F', 'bmi': 23}
     correct_row1.update(pytest.usecase_1_filedata)
@@ -129,14 +130,26 @@ def test_usecase_4():
 
     # b)
     with open('testfile/scorefile1.mat') as scorefile1:
-        fid1 = med_api.upload_file(scorefile1, filename='scorefile1.mat', fileformat='scorefile', studyid='TEST',
+        fid1 = med_api.upload_file(scorefile1,
+                                   filename='scorefile1.mat',
+                                   fileformat='scorefile',
+                                   studyid='TEST',
                                    versionid=1,
-                                   subjectid=1, visitid=1, sessionid=1, filetype='scorefile')
+                                   subjectid=1,
+                                   visitid=1,
+                                   sessionid=1,
+                                   filetype='scorefile')
 
     with open('testfile/scorefile2.mat') as scorefile2:
-        fid2 = med_api.upload_file(scorefile2, filename='scorefile2.mat', fileformat='scorefile', studyid='TEST',
+        fid2 = med_api.upload_file(scorefile2,
+                                   filename='scorefile2.mat',
+                                   fileformat='scorefile',
+                                   studyid='TEST',
                                    versionid=1,
-                                   subjectid=1, visitid=2, sessionid=1, filetype='scorefile')
+                                   subjectid=1,
+                                   visitid=2,
+                                   sessionid=1,
+                                   filetype='scorefile')
 
     scorefile1_data = {}  # TODO add file data here
     scorefile2_data = {}
