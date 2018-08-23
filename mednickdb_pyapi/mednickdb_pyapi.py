@@ -30,11 +30,14 @@ class MyEncoder(json.JSONEncoder):
 
 class MyDecoder(json.JSONDecoder):  # TODO. test this!
     def __init__(self, *args, **kargs):
-        json.JSONDecoder.__init__(self, object_hook=self.datetime_parser,
+        json.JSONDecoder.__init__(self, object_hook=self.parser,
                                   *args, **kargs)
 
-    def datetime_parser(self, dct):
+    def parser(self, dct):
         for k, v in dct.items():
+            if isinstance(v, str) and v == '':
+                dct[k] = None
+            # Parse datestrings back to python datetimes
             if isinstance(v, str) and re.search('[0-9]*-[0-9]*-[0-9]*T[0-9]*:[0-9]*:', v):
                 try:
                     dct[k] = dateutil.parser.parse(v)
@@ -235,14 +238,14 @@ class MednickAPI:
         # ret = self.s.get(self.server_address + '/getProfiles?query']=query_string)
         # return _json_loads(ret, cls=MyDecoder)
 
-    def purge_all_files(self, password):
+    def delete_all_files(self, password):
         if password == 'kiwi':
             files = self.get_files()
             print(len(files),'found, beginning delete...')
             for file in files:
                 print(self.delete_file(file['_id']))
         else:
-            print('Cannot delete all files on the server without a password!')
+            print('Cannot delete all files on the server without correct password!')
 
     def __del__(self):
         # TODO, this should trigger logout??
@@ -254,7 +257,8 @@ class MednickAPI:
 if __name__ == '__main__':
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
 
-    #med_api.purge_all_files(password='kiwi')
+    #med_api.delete_all_files(password='kiwi')
+    print(med_api.get_data())
 
     some_files = med_api.get_files()
     print('There are', len(some_files), 'files on the server before upload')
@@ -263,7 +267,7 @@ if __name__ == '__main__':
     # print('There are', len(some_files), 'deleted files on the server')
     with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
         fid = med_api.upload_file(fileobject=uploaded_version,
-                                  fileformat='testformat',
+                                  fileformat='scorefile',
                                   filetype='Yo',
                                   studyid='TEST4',
                                   versionid=str(1))
