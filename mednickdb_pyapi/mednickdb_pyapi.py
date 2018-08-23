@@ -188,14 +188,15 @@ class MednickAPI:
         return _json_loads(self.s.get(self.server_address + '/' + store + '/types', params=params))
 
     # Data Functions
-    def upload_data(self, data, studyid, versionid, filetype, fid=None, subjectid=None, visitid=None, sessionid=None):
+    def upload_data(self, data, studyid, versionid, filetype, fid, subjectid, visitid=None, sessionid=None):
         """Upload a data to the datastore in the specified location. data should be a single object of key:values and convertable to json.
         Specifiers like studyid etc contained in the data object will be extracted and used before any in the function arguments.
         If this is a new location (no data exists), then add, if it exists, merge or overwrite.
         If this data came from a particular file in the server, then please add a file id to link back to that file"""
         data_packet = _parse_locals_to_data_packet(locals())
         data_packet['data'] = json.dumps(data_packet['data'], cls=MyEncoder)
-        self.s.post(self.server_address + '/data/upload', data=data_packet)
+        data_packet['sourceid'] = data_packet.pop('id')
+        return _json_loads(self.s.post(self.server_address + '/data/upload', data=data_packet))
 
     def get_data(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
         """Get all the data in the datastore at the specified location. Return is python dictionary"""
@@ -256,11 +257,12 @@ class MednickAPI:
 
 if __name__ == '__main__':
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
-
     #med_api.delete_all_files(password='kiwi')
-    print(med_api.get_data())
+    print(med_api.get_data(studyid='TEST'))
 
     some_files = med_api.get_files()
+    med_api.upload_data(data={'test': 'value1'}, subjectid=1, studyid='TEST', versionid=1, filetype='test', fid=some_files[0]['_id'])
+
     print('There are', len(some_files), 'files on the server before upload')
     print('There are', len(med_api.get_unparsed_files()), 'unparsed files before upload')
     some_files = med_api.get_deleted_files()
