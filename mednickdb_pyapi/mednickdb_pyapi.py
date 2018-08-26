@@ -3,7 +3,9 @@ import json
 import datetime
 import numpy
 import re
+import time
 import dateutil.parser
+import sys
 import _io
 import base64
 
@@ -17,7 +19,7 @@ param_map = {
 class MyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, (datetime.datetime, datetime.date)):
-            return obj.isoformat()
+            return time.mktime(obj.timetuple())*1000  # Convert to ms
         if isinstance(obj, numpy.integer):  # TODO test
             return int(obj)
         elif isinstance(obj, numpy.floating):
@@ -37,6 +39,9 @@ class MyDecoder(json.JSONDecoder):  # TODO. test this!
         for k, v in dct.items():
             if isinstance(v, str) and v == '':
                 dct[k] = None
+
+            if k in ['datemodified','dateExpired']:
+                dct[k] = datetime.datetime.fromtimestamp(v/1000)
             # Parse datestrings back to python datetimes
             if isinstance(v, str) and re.search('[0-9]*-[0-9]*-[0-9]*T[0-9]*:[0-9]*:', v):
                 try:
@@ -90,7 +95,7 @@ class MednickAPI:
         return True, 'admin'
 
     # File related functions
-    def upload_file(self, fileobject, fileformat, filetype, studyid=None, versionid=None, subjectid=None,
+    def upload_file(self, fileobject, fileformat, filetype, fileversion=None, studyid=None, versionid=None, subjectid=None,
                     visitid=None, sessionid=None):
         """Upload a file data to the filestore in the specified location. File_data should be convertable to json.
         If this is a brand new file, then add, if it exists, then overwrite. This shoudl return file id"""
@@ -98,7 +103,11 @@ class MednickAPI:
         files = {'fileobject': data_packet.pop('fileobject')}
         ret = self.s.post(url=self.server_address + '/files/upload', data=data_packet, files=files)
         fids = _json_loads(ret)['insertedIds']
-        return [fid for _, fid in sorted(fids.items())]
+        inserted_fids = [fid for _, fid in sorted(fids.items())]
+        if isinstance(fileobject, list):
+            return inserted_fids
+        else:
+            return inserted_fids[0]
 
     def update_file_info(self, fid, fileformat, filetype, studyid=None):
         """Unsure why this is useful. TODO ask Juan"""
@@ -119,7 +128,7 @@ class MednickAPI:
             files = [file for file in files if file['active']]
         return files
 
-    def get_single_file(self, fid):
+    def get_file_by_fid(self, fid):
         """Get the meta data associated with a file id (i.e. the data associated with this id in the filestore)"""
         data_packet = _parse_locals_to_data_packet(locals())
         return _json_loads(self.s.get(url=self.server_address + '/files/info', params={'id': fid}))
@@ -194,8 +203,8 @@ class MednickAPI:
         If this is a new location (no data exists), then add, if it exists, merge or overwrite.
         If this data came from a particular file in the server, then please add a file id to link back to that file"""
         data_packet = _parse_locals_to_data_packet(locals())
-        data_packet['data'] = json.dumps(data_packet['data'], cls=MyEncoder)
         data_packet['sourceid'] = data_packet.pop('id')
+        data_packet = json.dumps(data_packet, cls=MyEncoder)
         return _json_loads(self.s.post(self.server_address + '/data/upload', data=data_packet))
 
     def get_data(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
@@ -261,8 +270,9 @@ if __name__ == '__main__':
     print(med_api.get_data(studyid='TEST'))
 
     some_files = med_api.get_files()
-    med_api.upload_data(data={'test': 'value1'}, subjectid=1, studyid='TEST', versionid=1, filetype='test', fid=some_files[0]['_id'])
+    med_api.upload_data(data={'test': 'value1'}, subjectid='1', studyid='TEST', versionid='1', filetype='test', fid='testid')
 
+    sys.exit()
     print('There are', len(some_files), 'files on the server before upload')
     print('There are', len(med_api.get_unparsed_files()), 'unparsed files before upload')
     some_files = med_api.get_deleted_files()
@@ -282,7 +292,7 @@ if __name__ == '__main__':
     # print('There are', med_api.get_studyids('files'), 'studies')
     # print('There are', med_api.get_visitids('files', studyid='TEST'), 'visits in TEST')
     print(fid[0])
-    print(med_api.get_single_file(fid[0]))
+    print(med_api.get_file_by_fid(fid[0]))
     downloaded_version = med_api.download_file(fid[0])
     with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
         assert(downloaded_version == uploaded_version.read())

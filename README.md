@@ -1,69 +1,27 @@
 # python_module
 
-This is a python api to access the mednicklab database. It implements all get and post endpoints for the database server. Please see the [MednickDB](https://mednicklab.github.io/mednickDB/) documentation for more information on the specific endpoints.
-
-## Getting Started
-
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
-
-### Prerequisites
-
-For this project you need to have those insalled 
-
-```
-Python 3.0+
-```
-```
-node.js
-```
-```
-npm
-```
-### Installing local host server
-
-First fork Juan's github then do 
-
-```
-git clone https://github.com/jvillagomez/mednick.git
-```
-
-
-```
-cd server
-```
-
-```
-npm install
-```
-```
-npm start
-```
-
-
-
-### Installing python client
-
-First fork my my github 
-
-```
-git clone https://github.com/MednickLab/PythonModule.git
-```
-
-### Mednick DB link
-
-```
-https://github.com/jvillagomez/mednickDB
-```
-
+This is a python api to access the mednicklab database. It implements all get and post endpoints for the database server. Please see the [MednickDB Endpoint](https://app.swaggerhub.com/apis/mednickAPI/mednick-db_api/1.0.0) documentation for more information on the specific endpoints.
 
 ## Authors
 
+* **Ben Yetton**
+* **Juan Antonio**
 * **Nelly Lyu** 
 
 See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [Licence](LICENSE.md) file for details
 
+## About File Versions and states:
+Files have can have multiple states (expired, active, deleted) and multiple versions are permitted. 
+If a file with the same name and info as an existing file is uploaded, the previous version will be marked as inactive and the new version will take its place.
 
+- A file is *"active"* when its the most recent version. If you are querying files via ```mednick_api.get_files()```, 
+then you should only get the active version. An addtional ```fileversion``` parameter may be supplied to get older versions.
+
+- A file is *"expired"* when it is due for deletion, but will be maintained for some pre defined time before automatically being deleted. The raw file still exists at this point. 
+The file can still be retrived via ```mednick_api.get_deleted_files()```.  
+ 
+- A file is *"deleted"* when its raw file has been destroyed.

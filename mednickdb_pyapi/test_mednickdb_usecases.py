@@ -37,7 +37,7 @@ def test_clear_test_study():
 #
 #     #b)
 #     time.sleep(5)  # Give db 5 seconds to update
-#     file_data = med_api.get_single_file(fid)
+#     file_data = med_api.get_file_by_fid(fid)
 #     file_data_real = {
 #         'filename': 'sleepfile1.edf',
 #         'filepath': 'TEST/1/1/1/1/',
@@ -56,23 +56,22 @@ def test_clear_test_study():
 def test_usecase_2():
     # a)
     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
-    with open('testfiles/PSTIM_Demographics.xlsx', 'rb') as demofile:
+    with open('testfiles/TEST_Demographics.xlsx', 'rb') as demofile:
         # b)
         fid = med_api.upload_file(fileobject=demofile,
-                                  filename='PSTIM_Demographics.xlsx',
                                   filetype='demographics',
                                   fileformat='tabular',
                                   studyid='TEST',
                                   versionid=1)
         downloaded_demo = med_api.download_file(fid)
-        with open('testfiles/PSTIM_Demographics.xlsx', 'rb') as demofile:
+        with open('testfiles/TEST_Demographics.xlsx', 'rb') as demofile:
             assert downloaded_demo == demofile.read()
 
     # c)
     time.sleep(5)  # Give file db 5 seconds to update
-    file_data = med_api.get_single_file(fid)
+    file_data = med_api.get_file_by_fid(fid)
     file_data_real = {
-        'filename': 'PSTIM_Demographics.xlsx',
+        'filename': 'TEST_Demographics.xlsx',
         'filepath': './uploads/TEST/1/1/',
         'filetype': 'demographics',
         'studyid': 'TEST',
@@ -200,13 +199,13 @@ def test_get_specifiers():
 def test_update_file_info():
     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
     fids = med_api.get_files(studyid='TEST')
-    file_info_1 = med_api.get_single_file(fids[0])
+    file_info_1 = med_api.get_file_by_fid(fids[0])
     to_add = {'sessionid': '10'}
     med_api.update_file_info(fid=fids[0], file_info=to_add)
     file_info_1.update(to_add)
     time.sleep(5)  # Give db 5 seconds to update
 
-    file_info_2 = med_api.get_single_file(fids[0])
+    file_info_2 = med_api.get_file_by_fid(fids[0])
     assert (file_info_2 == file_info_1)
 
 
