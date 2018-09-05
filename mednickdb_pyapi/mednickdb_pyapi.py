@@ -6,14 +6,39 @@ import re
 import time
 import dateutil.parser
 import sys
+from collections import OrderedDict
 import _io
 import base64
 
 # TODO use kwargs instead of a long list of specifiers
 
 param_map = {
-    'fid':'id'
+    'fid':'id',
 }
+
+query_kwmap = OrderedDict({
+    ' and ': '*AND*',
+    ' or ': '*OR*',
+    ' > ': '*GT*',
+    ' >= ': '*GTE*',
+    ' < ': '*LT*',
+    ' <= ': '*LTE*',
+    ' in ': '*IN*',
+    ' not in ': '*NIN*',
+    ' not ': '*NE*',
+    ' != ': '*NE*',
+    ' = ': '=',
+    '==': '=',
+    '>': '*GT*',
+    '>=': '*GTE*',
+    '<': '*LT*',
+    '<=': '*LTE*',
+    '!=': '*NE*',
+    ' & ': '*AND*',
+    ' | ': '*OR*',
+    '&': '*AND*',
+    '|': '*OR*',
+})
 
 
 class MyEncoder(json.JSONEncoder):
@@ -63,7 +88,8 @@ def _json_loads(ret, file=False):
 
 
 def _parse_locals_to_data_packet(locals_dict):
-    locals_dict.pop('self')
+    if 'self' in locals_dict:
+        locals_dict.pop('self')
     if 'kwargs' in locals_dict:
         kwargs = locals_dict.pop('kwargs')
         locals_dict.update(kwargs)
@@ -81,8 +107,15 @@ class MednickAPI:
         print('Successfully connected to server at', self.server_address, 'with', self.usertype, 'privileges')
 
     @staticmethod
-    def extract_var(list_of_dicts, var):
-        return [d[var] for d in list_of_dicts if var in d]
+    def extract_var(list_of_dicts, var, raise_on_missing=True):
+        if raise_on_missing:
+            return [d[var] for d in list_of_dicts]
+        else:
+            return [d[var] for d in list_of_dicts if var in d]
+
+    @staticmethod
+    def sortby(sort_x, by_y, reverse=True):
+        return [x for _, x in sorted(zip(by_y, sort_x), reverse=reverse)]
 
     def login(self, username, password):
         """Login to the server. Returns login token and usertype (privilages)"""
@@ -110,23 +143,61 @@ class MednickAPI:
             return inserted_fids[0]
 
     def update_file_info(self, fid, fileformat, filetype, studyid=None):
-        """Unsure why this is useful. TODO ask Juan"""
+        """Change the location of a file on the datastore and update its info"""
         data_packet = _parse_locals_to_data_packet(locals())
         ret = self.s.put(url=self.server_address + '/files/update', data=data_packet)
         return _json_loads(ret)
 
-    def delete_file(self, fid):
-        """Delete a file from the filestore"""
-        return _json_loads(self.s.delete(self.server_address + '/files/expire', data={'id': fid}))
-
-    def get_files(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None, active_only=True):
-        """Retrieves a list of files ids for files in the file store that match the above specifiers"""
+    def update_parsed_status(self, fid, status):
+        """Change the parsed status of a file. Status is True when parsed or False otherwise"""
         data_packet = _parse_locals_to_data_packet(locals())
-        active_only = data_packet.pop('active_only')
-        files = _json_loads(self.s.get(url=self.server_address + '/files', params=data_packet))
+        data_packet.pop('status')  # FIXME as of 1.2.2 this function does not take status
+        ret = self.s.put(url=self.server_address + '/files/update', data=data_packet)
+        return _json_loads(ret)
+
+    def delete_file(self, fid, delete_all_versions=False,
+                    reactivate_previous=False,
+                    remove_associated_data=False):
+        """Delete a file from the filestore.
+            Args:
+                delete_all_versions: If true, delete all version of this file
+                reactivate_previous: If true, set any old versions as the active version, and trigger a reparse of these files so there data is added to the datastore
+                remove_associated_data: If true, purge datastore of all data associated with this file
+        """
+        locals_ = locals()
+        name_map = {
+            'reactivate_previous': 'previous',
+            'delete_all_versions': 'all',
+            'remove_associated_data': 'data',
+            'fid': 'id'
+        }
+        locals_.pop('self')
+        print(locals_)
+        data = {name_map[k]: v for k, v in locals_.items()}
+        return _json_loads(self.s.delete(self.server_address + '/files/expire', data=data))
+
+    def get_files(self, query=None, active_only=True, previous_versions=False, **kwargs):
+        """Retrieves a list of files ids for files in the file store that match the above specifiers.
+            Any keys in the file profile may be included, and only matching files for all will be returned.
+            Return files are sorted by datemodified.
+        """
+        if query:
+            for k, v in query_kwmap.items():
+                query = query.replace(k, v)
+            print(query)
+            if previous_versions:
+                ret = _json_loads(self.s.get(self.server_address + '/files?'+query, params={'versions':"1"}))
+            else:
+                ret = _json_loads(self.s.get(self.server_address + '/files?' + query))
+        else:
+            params = _parse_locals_to_data_packet(kwargs)
+            if previous_versions:
+                params.update({'versions':'1'})
+            ret = _json_loads(self.s.get(self.server_address + '/files', params=params))
+
         if active_only:
-            files = [file for file in files if file['active']]
-        return files
+            files = [file for file in ret if file['active']]
+        return self.sortby(files, self.extract_var(files, 'datemodified'))
 
     def get_file_by_fid(self, fid):
         """Get the meta data associated with a file id (i.e. the data associated with this id in the filestore)"""
@@ -135,7 +206,6 @@ class MednickAPI:
 
     def download_file(self, fid):
         """Downloads a file that matches the file id as binary data"""
-        # TODO, may need to convert this
         return _json_loads(self.s.get(url=self.server_address + '/files/download', params={'id': fid}), file=True)
 
     def download_files(self, fids):
@@ -144,9 +214,9 @@ class MednickAPI:
         return _json_loads(self.s.get(url=self.server_address + '/files/downloadmultiple', params={'id': fids_param}))
 
     def delete_multiple(self, fids):
-        """Deletes a list of files coresponding to the given fileids"""
+        """Deletes a list of files coresponding to the given fileids. Not Tested TODO"""
         fids_param = '*AND*'.join(fids)
-        return _json_loads(self.s.get(url=self.server_address + '/files/expiremultiple', params={'id': fids_param}))
+        return _json_loads(self.s.delete(url=self.server_address + '/files/expiremultiple', data={'id': fids_param}))
 
     def get_deleted_files(self):
         """Retrieves a list of fids for deleted files from the file store that match the above specifiers"""
@@ -207,15 +277,20 @@ class MednickAPI:
         data_packet = json.dumps(data_packet, cls=MyEncoder)
         return _json_loads(self.s.post(self.server_address + '/data/upload', data=data_packet))
 
-    def get_data(self, studyid=None, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
+    def get_data(self, query=None, **kwargs):
         """Get all the data in the datastore at the specified location. Return is python dictionary"""
-        params = _parse_locals_to_data_packet(locals())
+        if query:
+            for k, v in query_kwmap.items():
+                query = query.replace(k, v)
+            return _json_loads(self.s.get(self.server_address + '/data?'+query))
+        else:
+            params = _parse_locals_to_data_packet(kwargs)
         return _json_loads(self.s.get(self.server_address + '/data', params=params))
 
     def delete_data(self, studyid, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
         """Delete all data at a particular level of the hierarchy"""
-        params = _parse_locals_to_data_packet(locals())
-        return _json_loads(self.s.get(self.server_address + '/data/expired', params=params))
+        data = _parse_locals_to_data_packet(locals())
+        return _json_loads(self.s.delete(self.server_address + '/data/expired', data=data))
 
     def get_data_from_single_file(self, fid):
         """ Get the data in the datastore associated with a file
@@ -227,29 +302,11 @@ class MednickAPI:
     def delete_data_from_single_file(self, fid):
         """ Deletes the data in the datastore associated with a file
         (i.e. get the data that was extracted from that file on upload)"""
-        raise NotImplementedError()
-        # ret = self.s.post(self.server_address + '/FileData?id='+fid)
-        # return _json_loads(ret, cls=MyDecoder)
-
-    def update_parsed_status(self, fid, status):
-        """Change the parsed status of a file. Status is True when parsed or False otherwise"""
-        raise NotImplementedError()
-        # self.s.get(self.server_address + '/updateParsedStatus?id']=id + '&Status='+status)
-
-    def search_filestore(self, query_string):
-        """Return a list of file ids that match the query"""
-        raise NotImplementedError()
-        # ret = self.s.get(self.server_address + '/getFiles?query']=query_string)
-        # return _json_loads(ret)
-
-    def search_datastore(self, query_string):
-        """Return a data rows (as python objects) that match the query"""
-        raise NotImplementedError()
-        # ret = self.s.get(self.server_address + '/getProfiles?query']=query_string)
-        # return _json_loads(ret, cls=MyDecoder)
+        ret = self.s.delete(self.server_address + '/data/expireByFile', data={'id':fid})
+        return _json_loads(ret)
 
     def delete_all_files(self, password):
-        if password == 'kiwi':
+        if password == 'nap4life':
             files = self.get_files()
             print(len(files),'found, beginning delete...')
             for file in files:
@@ -258,21 +315,19 @@ class MednickAPI:
             print('Cannot delete all files on the server without correct password!')
 
     def __del__(self):
-        # TODO, this should trigger logout??
+        # TODO, this should trigger logout.
         pass
-
-
 
 
 if __name__ == '__main__':
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
     #med_api.delete_all_files(password='kiwi')
+
+    med_api.upload_data(data={'test': 'value1'}, subjectid='1', studyid='1', versionid='1', filetype='test', fid='testid')
     print(med_api.get_data(studyid='TEST'))
 
-    some_files = med_api.get_files()
-    med_api.upload_data(data={'test': 'value1'}, subjectid='1', studyid='TEST', versionid='1', filetype='test', fid='testid')
-
     sys.exit()
+    some_files = med_api.get_files()
     print('There are', len(some_files), 'files on the server before upload')
     print('There are', len(med_api.get_unparsed_files()), 'unparsed files before upload')
     some_files = med_api.get_deleted_files()
