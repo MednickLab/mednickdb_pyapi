@@ -206,43 +206,43 @@ def test_data_query():
 
     #Test ==
     data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age==22')]
-    assert all([out_row in [row1] for out_row in data_rows])
+    assert all([row in data_rows for row in [row1]])
 
     # Test IN
-    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age==22')]
-    assert all([out_row in [row1] for out_row in data_rows])
+    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age in [22,19]')]
+    assert all([row in data_rows for row in [row1, row2]])
 
     # Test not in
-    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age==22')]
-    assert all([out_row in [row1] for out_row in data_rows])
+    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age not in [22,19]')]
+    assert all([row in data_rows for row in [row3]])
 
     # Test and
-    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age==22')]
-    assert all([out_row in [row1] for out_row in data_rows])
+    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age==22 and versionid==1')]
+    assert all([row in data_rows for row in [row1]])
 
     # Test or
-    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age==22')]
-    assert all([out_row in [row1] for out_row in data_rows])
+    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age==22 or versionid==1')]
+    assert all([row in data_rows for row in [row1, row2, row3]])
 
     # Test not =
-    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age==22')]
-    assert all([out_row in [row1] for out_row in data_rows])
+    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age!=22')]
+    assert all([row in data_rows for row in [row2, row3]])
 
     # Test >
-    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age==22')]
-    assert all([out_row in [row1] for out_row in data_rows])
+    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age>19')]
+    assert all([row in data_rows for row in [row1, row3]])
 
     # Test <
-    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age==22')]
-    assert all([out_row in [row1] for out_row in data_rows])
+    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age<22')]
+    assert all([row in data_rows for row in [row2]])
 
     # Test <=
-    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age==22')]
-    assert all([out_row in [row1] for out_row in data_rows])
+    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age>=22')]
+    assert all([row in data_rows for row in [row1, row2, row3]])
 
-    # Test <=
-    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age==22')]
-    assert all([out_row in [row1] for out_row in data_rows])
+    # Test >=
+    data_rows = [strip_non_matching_keys(row, row1) for row in med_api.get_data(query='age<=22')]
+    assert all([row in data_rows for row in [row1, row2]])
 
 
 
