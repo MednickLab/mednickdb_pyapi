@@ -21,7 +21,7 @@ def test_clear_test_study():
         fids2 = med_api.extract_var(med_api.get_files(studyid='TEST'),'_id')
         assert fid not in fids2
         assert (fids2 == [])
-        deleted_fids = med_api.extract_var(med_api.get_deleted_files(),'_id')#TODO studyid='TEST')
+        deleted_fids = med_api.extract_var(med_api.get_deleted_files(),'_id')  # TODO studyid='TEST'
         assert all([dfid in deleted_fids for dfid in fids])
     med_api.delete_data(studyid='TEST')
     assert len(med_api.get_data(studyid='TEST')) == 0

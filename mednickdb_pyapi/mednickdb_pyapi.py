@@ -17,26 +17,25 @@ param_map = {
 }
 
 query_kwmap = OrderedDict({
-    ' and ': '*AND*',
+    ' and ': '&',
     ' or ': '*OR*',
-    ' > ': '*GT*',
-    ' >= ': '*GTE*',
-    ' < ': '*LT*',
-    ' <= ': '*LTE*',
-    ' in ': '*IN*',
-    ' not in ': '*NIN*',
-    ' not ': '*NE*',
-    ' != ': '*NE*',
+    ' > ': '=*GT*',
+    ' >= ': '=*GTE*',
+    ' < ': '=*LT*',
+    ' <= ': '=*LTE*',
+    ' in ': '=*IN*',
+    ' not in ': '=*NIN*',
+    ' not ': '=*NE*',
+    ' != ': '=*NE*',
     ' = ': '=',
     '==': '=',
-    '>': '*GT*',
-    '>=': '*GTE*',
-    '<': '*LT*',
-    '<=': '*LTE*',
-    '!=': '*NE*',
-    ' & ': '*AND*',
+    '>': '=*GT*',
+    '>=': '=*GTE*',
+    '<': '=*LT*',
+    '<=': '=*LTE*',
+    '!=': '=*NE*',
+    ' & ': '&',
     ' | ': '*OR*',
-    '&': '*AND*',
     '|': '*OR*',
 })
 
@@ -55,7 +54,7 @@ class MyEncoder(json.JSONEncoder):
             return super(MyEncoder, self).default(obj)
 
 
-class MyDecoder(json.JSONDecoder):  # TODO. test this!
+class MyDecoder(json.JSONDecoder):
     def __init__(self, *args, **kargs):
         json.JSONDecoder.__init__(self, object_hook=self.parser,
                                   *args, **kargs)
@@ -172,7 +171,6 @@ class MednickAPI:
             'fid': 'id'
         }
         locals_.pop('self')
-        print(locals_)
         data = {name_map[k]: v for k, v in locals_.items()}
         return _json_loads(self.s.delete(self.server_address + '/files/expire', data=data))
 
@@ -192,7 +190,7 @@ class MednickAPI:
         else:
             params = _parse_locals_to_data_packet(kwargs)
             if previous_versions:
-                params.update({'versions':'1'})
+                params.update({'versions':True})
             ret = _json_loads(self.s.get(self.server_address + '/files', params=params))
 
         if active_only:
@@ -274,7 +272,9 @@ class MednickAPI:
         If this data came from a particular file in the server, then please add a file id to link back to that file"""
         data_packet = _parse_locals_to_data_packet(locals())
         data_packet['sourceid'] = data_packet.pop('id')
-        data_packet = json.dumps(data_packet, cls=MyEncoder)
+        data_packet['fileType'] = 'hi'
+        # data_packet['data'] = json.dumps(data_packet.pop('data'))
+        #data_packet = json.dumps(data_packet, cls=MyEncoder)
         return _json_loads(self.s.post(self.server_address + '/data/upload', data=data_packet))
 
     def get_data(self, query=None, **kwargs):
@@ -290,7 +290,7 @@ class MednickAPI:
     def delete_data(self, studyid, versionid=None, subjectid=None, visitid=None, sessionid=None, filetype=None):
         """Delete all data at a particular level of the hierarchy"""
         data = _parse_locals_to_data_packet(locals())
-        return _json_loads(self.s.delete(self.server_address + '/data/expired', data=data))
+        return _json_loads(self.s.delete(self.server_address + '/data/expire', data=data))
 
     def get_data_from_single_file(self, fid):
         """ Get the data in the datastore associated with a file
@@ -323,7 +323,6 @@ if __name__ == '__main__':
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
     #med_api.delete_all_files(password='kiwi')
 
-    med_api.upload_data(data={'test': 'value1'}, subjectid='1', studyid='1', versionid='1', filetype='test', fid='testid')
     print(med_api.get_data(studyid='TEST'))
 
     sys.exit()
