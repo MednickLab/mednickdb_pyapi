@@ -358,11 +358,15 @@ class MednickAPI:
 
         return rows
 
-    def delete_data(self, dataid):
-        """Delete all data at a particular level of the hierarchy given
+    def delete_data(self, **kwargs):
+        """Delete all data at a particular level of the hierarchy or using a specific dataid given
         the data id of the data object (returned from get_data as "_id")"""
-        data = _parse_locals_to_data_packet(locals())
-        return _json_loads(self.s.delete(self.server_address + '/data/expire', data={'sourceid':dataid}))
+        if 'dataid' in kwargs:
+            return _json_loads(self.s.delete(self.server_address + '/data/expire', data={'sourceid':kwargs['dataid']}))
+        else:
+            rows = self.get_data(**kwargs, format='nested_dict')
+            for row in rows:
+                self.delete_data(dataid=row['_id'])
 
     def get_data_from_single_file(self, filetype, fid, format='dataframe_single_index'):
         """ Get the data in the datastore associated with a file
@@ -429,6 +433,7 @@ if __name__ == '__main__':
     #                     versionid=1,
     #                     filetype='demo',
     #                     fid='dasdasd')
+    med_api.delete_data(studyid='TEST')
     med_api.get_unique_var_values('subjectid', 'files', studyid='TEST')
     b = med_api.get_data(query='studyid=TEST&data.demo.age>0', format='flat_dict')
     a = med_api.get_data(studyid='TEST', format='flat_dict')
