@@ -6,6 +6,7 @@ import re
 import time
 import dateutil.parser
 import sys
+import pandas as pd
 from collections import OrderedDict
 from operator import itemgetter
 import _io
@@ -110,6 +111,32 @@ class MednickAPI:
         print('Successfully connected to server at', self.server_address, 'with', self.usertype, 'privileges')
 
     @staticmethod
+    def format_as(ret_data, format='dataframe_single_index'):
+        if format == 'nested_dict':
+            return ret_data
+
+        row_cont = []
+        row_cont_dict = []
+        for row in ret_data:
+            if 'data' in row:
+                for datatype, datadict in row.pop('data').items():
+                    row.update({datatype+'.'+k: v for k, v in datadict.items()})
+            row_cont_dict.append(row)
+            row_cont.append(pd.Series(row))
+
+        if format == 'flat_dict':
+            return row_cont_dict
+
+        df = pd.concat(row_cont, axis=1).T
+        if format == 'dataframe_single_index':
+            return df
+        elif format == 'dataframe_multi_index':
+            raise NotImplementedError('TODO')
+        else:
+            ValueError('Unknown format requested, can be single_index or multi_index')
+
+
+    @staticmethod
     def extract_var(list_of_dicts, var, raise_on_missing=True):
         if raise_on_missing:
             return [d[var] for d in list_of_dicts]
@@ -178,7 +205,7 @@ class MednickAPI:
         data = {name_map[k]: v for k, v in locals_vars.items()}
         return _json_loads(self.s.delete(self.server_address + '/files/expire', data=data))
 
-    def get_files(self, query=None, previous_versions=False, **kwargs):
+    def get_files(self, query=None, previous_versions=False, format='dict_list', **kwargs):
         """Retrieves a list of files ids for files in the file store that match the above specifiers.
             Any keys in the file profile may be included, and only matching files for all will be returned.
             Return files are sorted by datemodified.
@@ -190,14 +217,19 @@ class MednickAPI:
             if previous_versions:
                 ret = _json_loads(self.s.get(self.server_address + '/files?'+query, params={'versions': '1'}))
             else:
-                ret = _json_loads(self.s.get(self.server_address + '/files?' + query))
+                ret = _json_loads(self.s.get(self.server_address + '/files?'+query))
         else:
             params = _parse_locals_to_data_packet(kwargs)
             if previous_versions:
                 params.update({'versions': '1'})
             ret = _json_loads(self.s.get(self.server_address + '/files', params=params))
 
-        return self.sortby(ret, 'datemodified')
+        ret = self.sortby(ret, 'datemodified')
+
+        if 'dataframe' in format:
+            ret = self.format_as(ret)
+
+        return ret
 
     def get_file_by_fid(self, fid):
         """Get the meta data associated with a file id (i.e. the data associated with this id in the filestore)"""
@@ -233,38 +265,71 @@ class MednickAPI:
         """Return a list of fid's for unparsed files"""
         return _json_loads(self.s.get(self.server_address + '/files/parsed'))
 
-    def get_studyids(self, store="data"):
-        """Get a list of studies stored in either the data or file store"""
-        return _json_loads(self.s.get(self.server_address + '/' + store + '/studies'))
+    def get_unique_var_values(self, var, store, **kwargs):
+        """Get possible values of a variable from either data or files store.
+        For example, get all filetypes for studyid=TEST from file store:
+            get_unique_var_values('filetype', store='files', studyid='TEST')
+        """
+        if store == 'data':
+            ret = self.get_data(**kwargs, format='nested_dict')
+        elif store == 'files':
+            ret = self.get_files(**kwargs, format='nested_dict')
+        else:
+            raise ValueError('Store Unknown')
 
-    def get_versionids(self, store, studyid=None, versionid=None, subjectid=None):
-        """Get the visitids associated with a particular studyid,versionid.
-        Either from data store (default) or file store"""
-        params = _parse_locals_to_data_packet(locals())
-        return _json_loads(self.s.get(self.server_address + '/' + store + '/versions', params=params))
+        if store == 'data' and var == 'filetype':
+            values = []
+            for row in ret:
+                values.append(list(row['data'].keys()))
+        else:
+            values = []
+            for row in ret:
+                try:
+                    values.append(row[var])
+                except KeyError:
+                    values.append(None)
+        return list(numpy.unique(values))
 
-    def get_subjectids(self, studyid=None, versionid=None):
-        """Get a list of studies stored in either the data store"""
-        params = _parse_locals_to_data_packet(locals())
-        return _json_loads(self.s.get(self.server_address + '/data/subjects', params=params))
+    # def get_studyids(self, store="data"):
+    #     """Get a list of studies stored in either the data or file store"""
+    #     return _json_loads(self.s.get(self.server_address + '/' + store + '/studies'))
+    #
+    # def get_versionids(self, store, studyid=None, versionid=None, subjectid=None):
+    #     """Get the visitids associated with a particular studyid,versionid.
+    #     Either from data store (default) or file store"""
+    #     params = _parse_locals_to_data_packet(locals())
+    #     return _json_loads(self.s.get(self.server_address + '/' + store + '/versions', params=params))
+    #
+    # def get_subjectids(self, studyid=None, versionid=None):
+    #     """Get a list of studies stored in either the data store"""
+    #     params = _parse_locals_to_data_packet(locals())
+    #     return _json_loads(self.s.get(self.server_address + '/data/subjects', params=params))
+    #
+    # def get_visitids(self, store, studyid=None, versionid=None, subjectid=None):
+    #     """Get the visitids associated with a particular studyid,versionid.
+    #     Either from data store (default) or file store"""
+    #     params = _parse_locals_to_data_packet(locals())
+    #     return _json_loads(self.s.get(self.server_address + '/' + store + '/visits', params=params))
+    #
+    # def get_sessionids(self, store, studyid=None, versionid=None, subjectid=None, visitid=None):
+    #     """Get the sessionids associated with a particular studyid,versionid,visitid.
+    #     Either from data store (default) or file store"""
+    #     params = _parse_locals_to_data_packet(locals())
+    #     return _json_loads(self.s.get(self.server_address + '/' + store + '/sessions', params=params))
 
-    def get_visitids(self, store, studyid=None, versionid=None, subjectid=None):
-        """Get the visitids associated with a particular studyid,versionid.
-        Either from data store (default) or file store"""
-        params = _parse_locals_to_data_packet(locals())
-        return _json_loads(self.s.get(self.server_address + '/' + store + '/visits', params=params))
-
-    def get_sessionids(self, store, studyid=None, versionid=None, subjectid=None, visitid=None):
-        """Get the sessionids associated with a particular studyid,versionid,visitid.
-        Either from data store (default) or file store"""
-        params = _parse_locals_to_data_packet(locals())
-        return _json_loads(self.s.get(self.server_address + '/' + store + '/sessions', params=params))
-
-    def get_filetypes(self, store, studyid, versionid=None, subjectid=None, visitid=None, sessionid=None):
-        """Get the filetypes associated with that level of the hierarchy from the data or file store"""
-        # TODO implement switch for file or data store
-        params = _parse_locals_to_data_packet(locals())
-        return _json_loads(self.s.get(self.server_address + '/' + store + '/types', params=params))
+    # def get_filetypes(self, store, studyid, versionid=None, subjectid=None, visitid=None, sessionid=None):
+    #     """Get the filetypes associated with that level of the hierarchy from the data or file store"""
+    #     _locals = locals()
+    #     _locals.pop('store')
+    #     params = _parse_locals_to_data_packet(_locals)
+    #     if store == 'data':
+    #         rows = self.get_data(format='nested_dict', **_locals)
+    #         file_types = []
+    #         for row in rows:
+    #             file_types.append(list(row['data'].keys()))
+    #         return list(numpy.unique(file_types))
+    #
+    #     return _json_loads(self.s.get(self.server_address + '/' + store + '/types', params=params))
 
     # Data Functions
     def upload_data(self, data, studyid, versionid, filetype, fid, subjectid, visitid=None, sessionid=None):
@@ -274,18 +339,24 @@ class MednickAPI:
         If this data came from a particular file in the server, then please add a file id to link back to that file"""
         data_packet = _parse_locals_to_data_packet(locals())
         data_packet['sourceid'] = data_packet.pop('id')
-        return _json_loads(self.s.post(self.server_address + '/data/upload', data={'data':json.dumps(data_packet, cls=MyEncoder)}))
+        return _json_loads(self.s.post(self.server_address + '/data/upload', data={'data': json.dumps(data_packet, cls=MyEncoder)}))
 
-    def get_data(self, query=None, **kwargs):
+    def get_data(self, query=None, discard_subsets=True, format='dataframe_single_index', **kwargs):
         """Get all the data in the datastore at the specified location. Return is python dictionary"""
         if query:
             for k, v in query_kwmap.items():
                 query = query.replace(k, v)
-            print(query)
-            return _json_loads(self.s.get(self.server_address + '/data?'+query))
+            rows = _json_loads(self.s.get(self.server_address + '/data?'+query))
         else:
             params = _parse_locals_to_data_packet(kwargs)
-        return _json_loads(self.s.get(self.server_address + '/data', params=params))
+            rows = _json_loads(self.s.get(self.server_address + '/data', params=params))
+
+        if discard_subsets:
+            rows = self.discard_subsets(rows)
+
+        rows = self.format_as(rows, format=format)
+
+        return rows
 
     def delete_data(self, dataid):
         """Delete all data at a particular level of the hierarchy given
@@ -293,12 +364,10 @@ class MednickAPI:
         data = _parse_locals_to_data_packet(locals())
         return _json_loads(self.s.delete(self.server_address + '/data/expire', data={'sourceid':dataid}))
 
-    def get_data_from_single_file(self, fid):
+    def get_data_from_single_file(self, filetype, fid, format='dataframe_single_index'):
         """ Get the data in the datastore associated with a file
         (i.e. get the data that was extracted from that file on upload)"""
-        raise NotImplementedError()
-        # ret = self.s.post(self.server_address + '/FileData?id='+fid)
-        # return _json_loads(ret, cls=MyDecoder)
+        return self.get_data('data.'+filetype+'.sourceid='+fid, format=format)
 
     def delete_data_from_single_file(self, fid):
         """ Deletes the data in the datastore associated with a file
@@ -309,11 +378,25 @@ class MednickAPI:
     def delete_all_files(self, password):
         if password == 'nap4life':
             files = self.get_files()
-            print(len(files),'found, beginning delete...')
+            print(len(files), 'found, beginning delete...')
             for file in files:
                 print(self.delete_file(file['_id']))
         else:
             print('Cannot delete all files on the server without correct password!')
+
+    def discard_subsets(self, ret_data):
+        hierarchical_specifiers = ['studyid','versionid', 'subjectid','visitid','sessionid']
+        for subset_idx in range(len(ret_data)-1, -1, -1): # iterate backwards so we can drop items but dont bugger the indexes
+            candidate_subset = ret_data[subset_idx]
+            for superset_idx in range(len(ret_data)-1, -1, -1):
+                candidate_superset = ret_data[superset_idx]
+                if subset_idx == superset_idx: # compare int faster than compare dict
+                    continue
+                if all(candidate_subset[k] == candidate_superset[k] or candidate_subset[k] is None
+                       for k in hierarchical_specifiers):
+                    del ret_data[subset_idx]
+                    break
+        return ret_data
 
     def __del__(self):
         # TODO, this should trigger logout.
@@ -324,30 +407,32 @@ if __name__ == '__main__':
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
     #med_api.delete_all_files(password='kiwi')
 
-    med_api.upload_data(data={'acc': 0.2, 'std':0.1},
-                        studyid='TEST',
-                        subjectid=2,
-                        versionid=1,
-                        visitid=1,
-                        filetype='WPA',
-                        fid='dasdasd')
+    # med_api.upload_data(data={'acc': 0.2, 'std':0.1},
+    #                     studyid='TEST',
+    #                     subjectid=2,
+    #                     versionid=1,
+    #                     visitid=1,
+    #                     filetype='WPA',
+    #                     fid='dasdasd')
+    #
+    # med_api.upload_data(data={'acc': 0.1, 'std': 0.1},
+    #                     studyid='TEST',
+    #                     subjectid=2,
+    #                     versionid=1,
+    #                     visitid=2,
+    #                     filetype='WPA',
+    #                     fid='dasdasd')
+    #
+    # med_api.upload_data(data={'age': 22, 'sex': 'M'},
+    #                     studyid='TEST',
+    #                     subjectid=2,
+    #                     versionid=1,
+    #                     filetype='demo',
+    #                     fid='dasdasd')
+    med_api.get_unique_var_values('subjectid', 'files', studyid='TEST')
+    b = med_api.get_data(query='studyid=TEST&data.demo.age>0', format='flat_dict')
+    a = med_api.get_data(studyid='TEST', format='flat_dict')
 
-    med_api.upload_data(data={'acc': 0.1, 'std': 0.1},
-                        studyid='TEST',
-                        subjectid=2,
-                        versionid=1,
-                        visitid=2,
-                        filetype='WPA',
-                        fid='dasdasd')
-
-    med_api.upload_data(data={'age': 22, 'sex': 'M'},
-                        studyid='TEST',
-                        subjectid=2,
-                        versionid=1,
-                        filetype='demo',
-                        fid='dasdasd')
-
-    print(med_api.get_data(studyid='TEST'))
 
     sys.exit()
     some_files = med_api.get_files()
@@ -359,8 +444,8 @@ if __name__ == '__main__':
         fid = med_api.upload_file(fileobject=uploaded_version,
                                   fileformat='scorefile',
                                   filetype='Yo',
-                                  studyid='TEST4',
-                                  versionid=str(1))
+                                  studyid='TEST',
+                                  versionid=1)
     print('We uploaded', len(fid), 'files')
     #print(fid)
     some_files = med_api.get_files()
