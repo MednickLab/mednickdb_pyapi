@@ -27,9 +27,9 @@ def test_clear_test_study():
         deleted_fids = med_api.extract_var(med_api.get_deleted_files(),'_id')
         assert all([dfid in deleted_fids for dfid in fids])
     remaining_test_data = med_api.get_data(studyid='TEST')
-    # for data in remaining_test_data:
-    #     med_api.delete_data(dataid=data['_id'])
-    # assert len(med_api.get_data(studyid='TEST')) == 0 #TODO after clearing up sourceid bug
+    for data in remaining_test_data:
+        med_api.delete_data(dataid=data['_id'])
+    assert len(med_api.get_data(studyid='TEST')) == 0 #TODO after clearing up sourceid bug
 
 
 @pytest.mark.dependency(['test_clear_test_study'])

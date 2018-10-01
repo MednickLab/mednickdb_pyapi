@@ -361,12 +361,13 @@ class MednickAPI:
     def delete_data(self, **kwargs):
         """Delete all data at a particular level of the hierarchy or using a specific dataid given
         the data id of the data object (returned from get_data as "_id")"""
-        if 'dataid' in kwargs:
-            return _json_loads(self.s.delete(self.server_address + '/data/expire', data={'sourceid':kwargs['dataid']}))
+        delete_param_name = 'id'
+        if delete_param_name in kwargs:
+            return _json_loads(self.s.delete(self.server_address + '/data/expire', data={delete_param_name: kwargs[delete_param_name]}))
         else:
-            rows = self.get_data(**kwargs, format='nested_dict')
+            rows = self.get_data(**kwargs, format='nested_dict', discard_subsets=False)
             for row in rows:
-                self.delete_data(dataid=row['_id'])
+                self.delete_data(id=row['_id'])
 
     def get_data_from_single_file(self, filetype, fid, format='dataframe_single_index'):
         """ Get the data in the datastore associated with a file
@@ -406,37 +407,47 @@ class MednickAPI:
         # TODO, this should trigger logout.
         pass
 
-
 if __name__ == '__main__':
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
-    #med_api.delete_all_files(password='kiwi')
+    #med_api.delete_all_files(password='nap4life')
+    # med_api.delete_data(studyid='TEST')
+    # med_api.delete_file(fid='5bb2788f5e52330010f10727')
 
-    # med_api.upload_data(data={'acc': 0.2, 'std':0.1},
-    #                     studyid='TEST',
-    #                     subjectid=2,
-    #                     versionid=1,
-    #                     visitid=1,
-    #                     filetype='WPA',
-    #                     fid='dasdasd')
-    #
-    # med_api.upload_data(data={'acc': 0.1, 'std': 0.1},
-    #                     studyid='TEST',
-    #                     subjectid=2,
-    #                     versionid=1,
-    #                     visitid=2,
-    #                     filetype='WPA',
-    #                     fid='dasdasd')
-    #
-    # med_api.upload_data(data={'age': 22, 'sex': 'M'},
-    #                     studyid='TEST',
-    #                     subjectid=2,
-    #                     versionid=1,
-    #                     filetype='demo',
-    #                     fid='dasdasd')
-    med_api.delete_data(studyid='TEST')
-    med_api.get_unique_var_values('subjectid', 'files', studyid='TEST')
-    b = med_api.get_data(query='studyid=TEST&data.demo.age>0', format='flat_dict')
-    a = med_api.get_data(studyid='TEST', format='flat_dict')
+    with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
+        fid = med_api.upload_file(fileobject=uploaded_version,
+                                  fileformat='scorefile',
+                                  filetype='Yo',
+                                  studyid='TEST',
+                                  versionid=1)
+
+    med_api.upload_data(data={'acc': 0.2, 'std':0.1},
+                        studyid='TEST',
+                        subjectid=2,
+                        versionid=1,
+                        visitid=1,
+                        filetype='WPA',
+                        fid=fid)
+
+    med_api.upload_data(data={'acc': 0.1, 'std': 0.1},
+                        studyid='TEST',
+                        subjectid=2,
+                        versionid=1,
+                        visitid=2,
+                        filetype='WPA',
+                        fid=fid)
+
+    med_api.upload_data(data={'age': 22, 'sex': 'M'},
+                        studyid='TEST',
+                        subjectid=2,
+                        versionid=1,
+                        filetype='demo',
+                        fid=fid)
+
+
+    #med_api.delete_data(studyid='TEST')
+    #med_api.get_unique_var_values('subjectid', 'files', studyid='TEST')
+    #b = med_api.get_data(query='studyid=TEST&data.demo.age>0', format='flat_dict')
+    #a = med_api.get_data(studyid='TEST', format='flat_dict')
 
 
     sys.exit()
