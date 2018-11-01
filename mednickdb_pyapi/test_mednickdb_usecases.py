@@ -2,6 +2,8 @@ from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
 import pytest
 import time
 import pandas as pd
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
 
 server_address = 'http://saclab.ss.uci.edu:8000'
 
@@ -11,8 +13,12 @@ data_update_time = 10
 
 data_upload_working = False
 
-def issubset(superset, subset):
+
+def dict_issubset(superset, subset, show_diffs=False):
+    if show_diffs:
+        return [item for item in subset.items() if item not in superset.items()]
     return all(item in superset.items() for item in subset.items())
+
 
 def pytest_namespace():
     return {'usecase_1_filedata': None}
@@ -30,17 +36,15 @@ def test_clear_test_study():
         assert (fids2 == [])
         deleted_fids = med_api.extract_var(med_api.get_deleted_files(),'_id')
         assert all([dfid in deleted_fids for dfid in fids])
-    remaining_test_data = med_api.get_data(studyid='TEST')
-    # for data in remaining_test_data:
-    #     med_api.delete_data(dataid=data['_id'])
-    # assert len(med_api.get_data(studyid='TEST')) == 0 #TODO after clearing up sourceid bug
+    med_api.delete_data(studyid='TEST')
+    assert len(med_api.get_data(studyid='TEST', format='nested_dict')) == 0 #TODO after clearing up sourceid bug
 
 
 @pytest.mark.dependency(['test_clear_test_study'])
 def test_usecase_1():
-    """Runs usecase one from the mednickDB_usecase document (fid=)"""
+    """runs usecase one from the mednickdb_usecase document (fid=)"""
     #a)
-    med_api = MednickAPI(server_address, 'test_ra_account@uci.edu', 'Pass1234')
+    med_api = MednickAPI(server_address, 'test_ra_account@uci.edu', 'pass1234')
     file_info_post = {
         'fileformat':'sleep',
         'studyid':'TEST',
@@ -50,6 +54,7 @@ def test_usecase_1():
         'sessionid':1,
         'filetype':'raw_sleep',
     }
+    file_data_real = file_info_post.copy()
     with open('testfiles/sleepfile1.edf','rb') as sleepfile:
         fid = med_api.upload_file(fileobject=sleepfile, **file_info_post)
 
@@ -58,21 +63,19 @@ def test_usecase_1():
         assert (downloaded_sleepfile == sleepfile.read())
 
     #b)
-    time.sleep(file_update_time)  # Give db 5 seconds to update
+    time.sleep(file_update_time)  # give db 5 seconds to update
     file_info_get = med_api.get_file_by_fid(fid)
-    file_info_post.update({'filename': 'testfiles/sleepfile1.edf', 'filepath':'TEST/1/1/1/1/'})
-    assert issubset(file_info_get, file_info_post)
+    file_info_post.update({'filename': 'sleepfile1.edf', 'filedir':'uploads/TEST/1/1/1/1/raw_sleep/'})
+    assert dict_issubset(file_info_get, file_info_post)
 
-    time.sleep(data_update_time-file_update_time)  # Give db 5 seconds to update
-
-    file_data = med_api.get_data_from_single_file(filetype='raw_sleep', fid=fid, format='flat_dict')
-    file_data_real = file_info_post.copy()
+    time.sleep(data_update_time-file_update_time)  # give db 5 seconds to update
+    file_datas = med_api.get_data_from_single_file(filetype='raw_sleep', fid=fid, format='flat_dict')
     file_data_real.pop('fileformat')
     file_data_real.pop('filetype')
-    file_data_real.update({'raw_sleep.edf_starttime': "10:10"})
-    assert(file_data_real in file_data)
+    file_data_real.update({'raw_sleep.edf_nchan': 3}) #add actual data in file. #TODO add all
+    assert(any([dict_issubset(file_data, file_data_real) for file_data in file_datas]))
 
-    pytest.usecase_1_filedata = file_data
+    pytest.usecase_1_filedata = file_data_real
     pytest.usecase_1_fid = fid
 
 
@@ -84,6 +87,7 @@ def test_usecase_2():
                       'fileformat':'tabular',
                       'studyid':'TEST',
                       'versionid':1}
+
     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
     with open('testfiles/TEST_Demographics.xlsx', 'rb') as demofile:
         # b)
@@ -94,31 +98,30 @@ def test_usecase_2():
 
     # c)
     time.sleep(file_update_time)  # Give file db 5 seconds to update
-    file_info_post.update({'filename': 'testfiles/TEST_Demographics.xlsx', 'filepath': 'TEST/1/1/'})
+    file_info_post.update({'filename': 'TEST_Demographics.xlsx', 'filedir': 'uploads/TEST/1/demographics/'})
     file_info_get = med_api.get_file_by_fid(fid)
-    assert issubset(file_info_get, file_info_post)
-
-    if not data_upload_working:
-        return
+    assert dict_issubset(file_info_get, file_info_post)
 
     # d)
-    time.sleep(data_update_time)  # Give data db 50 seconds to update
-    data_rows = med_api.get_data(studyid='TEST', versionid=1)
+    time.sleep(data_update_time-file_update_time)  # Give data db 50 seconds to update
+    data_rows = med_api.get_data(studyid='TEST', versionid=1, format='flat_dict')
     correct_row1 = {'studyid': 'TEST', 'versionid': 1, 'subjectid': 1,
                     'demographics.age': 23, 'demographics.sex': 'F', 'demographics.bmi': 23}
     correct_row1.update(pytest.usecase_1_filedata)
     correct_row2 = {'studyid': 'TEST', 'versionid': 1, 'subjectid': 2,
                     'demographics.age': 19, 'demographics.sex': 'M', 'demographics.bmi': 20}
-    correct_data = [correct_row1, correct_row2]
-    assert all([row in data_rows for row in correct_data])
-
-    # e)
-    data_raw_sleep = med_api.get_data(studyid='TEST', versionid=1, filetype='raw_sleep')
-    assert (data_raw_sleep in pytest.usecase_1_filedata)
+    correct_rows = [correct_row1, correct_row2]
 
     pytest.usecase_2_row1 = correct_row1
     pytest.usecase_2_row2 = correct_row2
     pytest.usecase_2_fid = fid
+
+    for correct_row in correct_rows: #TODO test again after merge bug fixed
+        assert any([dict_issubset(data_row, correct_row) for data_row in data_rows]), "demographics data downloaded does not match expected"
+
+    # e)
+    data_raw_sleep = med_api.get_data(studyid='TEST', versionid=1, filetype='raw_sleep')[0]
+    assert dict_issubset(data_raw_sleep, pytest.usecase_1_filedata), "sleep data downloaded does not match what was uploaded in usecase 1"
 
 
 @pytest.mark.dependency(['test_usecase_2'])
@@ -126,24 +129,33 @@ def test_usecase_3():
 
     # a)
     med_api = MednickAPI(server_address, 'test_ra_account@uci.edu', 'Pass1234')
-    med_api.upload_data(data={'accuracy': 0.9}, studyid='TEST', versionid=1, subjectid=2, visitid=1, sessionid=1,
-                        filetype='MemTaskA')
+    fid_for_manual_upload = med_api.extract_var(med_api.get_files(studyid='TEST'), '_id')[0] # get a random fid
+    data_post = {'studyid': 'TEST',
+                 'filetype': 'MemTaskA',
+                 'data': {'accuracy': 0.9},
+                 'versionid': 1,
+                 'subjectid': 2,
+                 'visitid': 1,
+                 'sessionid': 1}
+    med_api.upload_data(**data_post, fid=fid_for_manual_upload)
 
     # b)
     time.sleep(5)  # Give db 5 seconds to update
     correct_fids = [pytest.usecase_1_fid, pytest.usecase_2_fid]
-    fids = med_api.get_files(subjectid='TEST', versionid=1)
-    assert (all([True if fid in correct_fids else False for fid in fids]))
+    fids = med_api.extract_var(med_api.get_files(studyid='TEST', versionid=1), '_id')
+    assert all([fid in correct_fids for fid in fids]), "Missing expected FID's from two previous usecases"
 
     # c)
     time.sleep(5)  # Give db 5 seconds to update
-    data = med_api.get_data(studyid='TEST', versionid=1)
+    data_rows = med_api.get_data(studyid='TEST', versionid=1, format='flat_dict')
     correct_row_2 = pytest.usecase_2_row2
-    correct_row_2.update({'accuracy': 0.9})
-    correct_data = [pytest.usecase_2_row1, correct_row_2]
-    for i, data_i in enumerate(data):
-        assert (all([data_i[k] == correct_data[i][k] for k in correct_data[i]]))
+    correct_row_2.update({'MemTaskA.accuracy': 0.9})
     pytest.usecase_3_row2 = correct_row_2
+    correct_rows = [pytest.usecase_2_row1, correct_row_2]
+    for correct_row in correct_rows: #TODO test again after merge bug fixed
+        assert any([dict_issubset(data_row, correct_row) for data_row in data_rows])
+
+
 
 
 @pytest.mark.dependency(['test_usecase_3'])
@@ -151,38 +163,39 @@ def test_usecase_4():
     # a)
     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
 
-    # b)
-    with open('testfile/scorefile1.mat') as scorefile1:
+    # b) uploading some scorefiles
+    file_info1_post = {
+        'fileformat':'scorefile',
+        'studyid':'TEST',
+        'versionid':1,
+        'subjectid':1,
+        'visitid':1,
+        'sessionid':1,
+        'filetype':'scoring'
+    }
+    with open('testfiles/scorefile1.mat', 'rb') as scorefile1:
         fid1 = med_api.upload_file(scorefile1,
-                                   fileformat='scorefile',
-                                   studyid='TEST',
-                                   versionid=1,
-                                   subjectid=1,
-                                   visitid=1,
-                                   sessionid=1,
-                                   filetype='sleep')
+                                   **file_info1_post)
 
-    with open('testfile/scorefile2.mat') as scorefile2:
+    file_info2_post = file_info1_post.copy()
+    file_info2_post.update({'visitid':2})
+    with open('testfiles/scorefile2.mat', 'rb') as scorefile2:
         fid2 = med_api.upload_file(scorefile2,
-                                   fileformat='scorefile',
-                                   studyid='TEST',
-                                   versionid=1,
-                                   subjectid=1,
-                                   visitid=2,
-                                   sessionid=1,
-                                   filetype='sleep')
+                                   **file_info2_post)
 
-    scorefile1_data = {}  # TODO add file data here
-    scorefile2_data = {}
+    scorefile1_data = {'scoring.epochstage': [0, 0, 1, 1, 2, 2, 3, 3, 2, 2], 'scoring.epochoffset': [0, 30, 60, 90, 120, 150, 180, 210, 240, 270], 'scoring.starttime': 1451635302000, 'scoring.mins_in_0': 1, 'scoring.mins_in_1': 1, 'scoring.mins_in_2': 2, 'scoring.mins_in_3': 1, 'scoring.mins_in_4': 0, 'scoring.sleep_efficiency': 0.8, 'scoring.total_sleep_time': 4}
+    scorefile2_data = {'scoring.epochstage': [-1, -1, -1, 0, 0, 0, 0, 0, 0, 0], 'scoring.epochoffset': [0, 30, 60, 90, 120, 150, 180, 210, 240, 270], 'scoring.starttime': 1451635302000, 'scoring.mins_in_0': 3.5, 'scoring.mins_in_1': 0, 'scoring.mins_in_2': 0, 'scoring.mins_in_3': 0, 'scoring.mins_in_4': 0, 'scoring.sleep_efficiency': 0, 'scoring.total_sleep_time': 0}
 
     # c)
-    time.sleep(50)  # Give db 50 seconds to update
-    data = med_api.get_data(studyid='TEST', versionid=1)
+    time.sleep(data_update_time)  # Give db 50 seconds to update
+    data_rows = med_api.get_data(studyid='TEST', versionid=1, format='flat_dict')
     correct_row_1 = pytest.usecase_2_row1
     correct_row_2 = scorefile1_data.update(pytest.usecase_3_row2)
     correct_row_3 = scorefile2_data.update(pytest.usecase_2_row2)
-    correct_return = [correct_row_1, correct_row_2, correct_row_3]
-    assert (data == correct_return)
+    correct_rows = [correct_row_1, correct_row_2, correct_row_3]
+    for correct_row in correct_rows: #TODO test again after merge bug fixed
+        assert any([dict_issubset(data_row, correct_row) for data_row in data_rows])
+
     pytest.usecase_4_row1 = correct_row_1
     pytest.usecase_4_row2 = correct_row_2
     pytest.usecase_4_row3 = correct_row_3
@@ -192,36 +205,36 @@ def test_usecase_4():
 def test_usecase_5():
     # a)
     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
-    data = med_api.search_datastore(query_string='studyid = TEST and accuracy > 0.9')
-    assert (data == pytest.usecase_4_row2)
+    data_rows = med_api.get_data(query='studyid=TEST and data.MemTaskA.accuracy>=0.9', format='flat_dict')
+    assert any([dict_issubset(data_row, pytest.usecase_3_row2) for data_row in data_rows])
 
 
 def test_get_specifiers():
     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
-    sids = med_api.get_studyids()
+    sids = med_api.get_unique_var_values('studyid', store='data')
     assert ('TEST' in sids)
 
-    vids = med_api.get_versionids(studyid='TEST', store='data')
+    vids = med_api.get_unique_var_values('versionid', studyid='TEST', store='data')
     assert (vids == [1])
 
-    sids = med_api.get_subjectids(studyid='TEST')
+    sids = med_api.get_unique_var_values('subjectid', studyid='TEST', store='data')
     assert (sids == [1, 2])
 
-    vids = med_api.get_visitids(studyid='TEST', store='data')
+    vids = med_api.get_unique_var_values('visitid', studyid='TEST', store='data')
     assert (vids == [1, 2])
 
-    sids = med_api.get_sessionids(studyid='TEST', store='data')
+    sids = med_api.get_unique_var_values('sessionid', studyid='TEST', store='data')
     assert (sids == [1])
 
-    filetypes = med_api.get_filetypes(studyid='TEST', store='data')
+    filetypes = med_api.get_unique_var_values('filetype', studyid='TEST', store='data')
     assert (filetypes == ['raw sleep', 'scorefile', 'demographics', 'MemTaskA'])
 
 
 def test_update_file_info():
     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
     fids = med_api.get_files(studyid='TEST')
-    file_info_1 = med_api.get_file_by_fid(fids[0])
-    to_add = {'sessionid': '10'}
+    file_info_1 = med_api.get_file_by_fid(fid=fids[0])
+    to_add = {'sessionid': 10}
     med_api.update_file_info(fid=fids[0], file_info=to_add)
     file_info_1.update(to_add)
     time.sleep(5)  # Give db 5 seconds to update

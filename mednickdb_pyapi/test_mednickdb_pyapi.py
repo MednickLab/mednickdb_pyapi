@@ -26,10 +26,8 @@ def test_clear_test_study():
         assert (fids2 == [])
         deleted_fids = med_api.extract_var(med_api.get_deleted_files(),'_id')
         assert all([dfid in deleted_fids for dfid in fids])
-    remaining_test_data = med_api.get_data(studyid='TEST')
-    for data in remaining_test_data:
-        med_api.delete_data(dataid=data['_id'])
-    assert len(med_api.get_data(studyid='TEST')) == 0 #TODO after clearing up sourceid bug
+    med_api.delete_data(studyid='TEST')
+    assert len(med_api.get_data(studyid='TEST', format='nested_dict')) == 0 #TODO after clearing up sourceid bug
 
 
 @pytest.mark.dependency(['test_clear_test_study'])
@@ -229,51 +227,51 @@ def test_data_query():
                         fid=fid1)
 
     #sanity check to see if we have any data at all:
-    data_rows = med_api.get_data(studyid='TEST')
+    data_rows = med_api.get_data(format='nested_dict',studyid='TEST')
     assert len(data_rows) > 0
 
     #Test ==
-    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(query='data.demographics.sex==M')]
+    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(format='nested_dict',query='data.demographics.sex==M')]
     assert all([row in data_rows for row in [row1]])
 
     # Test IN
-    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(query='data.demographics.age in [22,19]')]
+    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(format='nested_dict',query='data.demographics.age in [22,19]')]
     assert all([row in data_rows for row in [row1, row2]])
 
     # Test not in
-    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(query='data.demographics.age not in [22,19]')]
+    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(format='nested_dict',query='data.demographics.age not in [22,19]')]
     assert all([row in data_rows for row in [row3]])
 
     # Test and
-    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(query='data.demographics.age==22 and versionid==1')]
+    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(format='nested_dict',query='data.demographics.age==22 and versionid==1')]
     assert all([row in data_rows for row in [row1]])
 
     # Test or
-    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(query='data.demographics.age==22 or 19')]
+    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(format='nested_dict',query='data.demographics.age==22 or 19')]
     assert all([row in data_rows for row in [row1, row2]])
 
     # Test not =
-    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(query='data.demographics.age!=22')]
+    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(format='nested_dict',query='data.demographics.age!=22')]
     assert all([row in data_rows for row in [row2, row3]])
 
     # Test >
-    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(query='data.demographics.age>19')]
+    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(format='nested_dict',query='data.demographics.age>19')]
     assert all([row in data_rows for row in [row1, row3]])
 
     # Test <
-    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(query='data.demographics.age<22')]
+    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(format='nested_dict',query='data.demographics.age<22')]
     assert all([row in data_rows for row in [row2]])
 
     # Test <=
-    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(query='data.demographics.age>=22')]
+    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(format='nested_dict',query='data.demographics.age>=22')]
     assert all([row in data_rows for row in [row1, row3]])
 
     # Test >=
-    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(query='data.demographics.age<=22')]
+    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(format='nested_dict',query='data.demographics.age<=22')]
     assert all([row in data_rows for row in [row1, row2]])
 
     # Test complex or
-    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(query='data.demographics.age<22 or >28')]
+    data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(format='nested_dict',query='data.demographics.age<22 or >28')]
     assert all([row in data_rows for row in [row2, row3]])
 
 

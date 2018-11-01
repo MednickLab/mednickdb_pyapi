@@ -95,7 +95,7 @@ def _parse_locals_to_data_packet(locals_dict):
     if 'kwargs' in locals_dict:
         kwargs = locals_dict.pop('kwargs')
         locals_dict.update(kwargs)
-    return {(param_map[k] if k in param_map else k): v for k, v in locals_dict.items()}
+    return {(param_map[k] if k in param_map else k): v for k, v in locals_dict.items() if v is not None}
 
 
 class MednickAPI:
@@ -172,7 +172,7 @@ class MednickAPI:
         else:
             return inserted_fids[0]
 
-    def update_file_info(self, fid, fileformat, filetype, studyid=None):
+    def update_file_info(self, fid, **kwargs):
         """Change the location of a file on the datastore and update its info"""
         data_packet = _parse_locals_to_data_packet(locals())
         ret = self.s.put(url=self.server_address + '/files/update', data=data_packet)
@@ -180,9 +180,8 @@ class MednickAPI:
 
     def update_parsed_status(self, fid, status):
         """Change the parsed status of a file. Status is True when parsed or False otherwise"""
-        data_packet = _parse_locals_to_data_packet(locals())
-        data_packet.pop('status')  # FIXME as of 1.2.2 this function does not take status
-        ret = self.s.put(url=self.server_address + '/files/update', data=data_packet)
+        # FIXME as of 1.2.2 this function does not take status
+        ret = self.s.put(url=self.server_address + '/files/updateParsedStatus', data={'id':fid, 'status':status})
         return _json_loads(ret)
 
     def delete_file(self, fid, delete_all_versions=False,
@@ -203,9 +202,9 @@ class MednickAPI:
         }
         locals_vars.pop('self')
         data = {name_map[k]: v for k, v in locals_vars.items()}
-        return _json_loads(self.s.delete(self.server_address + '/files/expire', data=data))
+        return _json_loads(self.s.post(self.server_address + '/files/expire', data=data))
 
-    def get_files(self, query=None, previous_versions=False, format='dict_list', **kwargs):
+    def get_files(self, query=None, previous_versions=False, format='nested_dict', **kwargs):
         """Retrieves a list of files ids for files in the file store that match the above specifiers.
             Any keys in the file profile may be included, and only matching files for all will be returned.
             Return files are sorted by datemodified.
@@ -226,8 +225,8 @@ class MednickAPI:
 
         ret = self.sortby(ret, 'datemodified')
 
-        if 'dataframe' in format:
-            ret = self.format_as(ret)
+        if len(ret) > 0:
+            ret = self.format_as(ret, format)
 
         return ret
 
@@ -332,7 +331,7 @@ class MednickAPI:
     #     return _json_loads(self.s.get(self.server_address + '/' + store + '/types', params=params))
 
     # Data Functions
-    def upload_data(self, data, studyid, versionid, filetype, fid, subjectid, visitid=None, sessionid=None):
+    def upload_data(self, data: dict, studyid, versionid, filetype, fid, subjectid, visitid=None, sessionid=None):
         """Upload a data to the datastore in the specified location. data should be a single object of key:values and convertable to json.
         Specifiers like studyid etc contained in the data object will be extracted and used before any in the function arguments.
         If this is a new location (no data exists), then add, if it exists, merge or overwrite.
@@ -354,7 +353,8 @@ class MednickAPI:
         if discard_subsets:
             rows = self.discard_subsets(rows)
 
-        rows = self.format_as(rows, format=format)
+        if len(rows) > 0:
+            rows = self.format_as(rows, format=format)
 
         return rows
 
@@ -381,6 +381,7 @@ class MednickAPI:
         return _json_loads(ret)
 
     def delete_all_files(self, password):
+        """Delete all files on the DB, use with extreme caution"""
         if password == 'nap4life':
             files = self.get_files()
             print(len(files), 'found, beginning delete...')
@@ -409,7 +410,8 @@ class MednickAPI:
 
 if __name__ == '__main__':
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'bdyetton@hotmail.com', 'Pass1234')
-    #med_api.delete_all_files(password='nap4life')
+    # med_api.delete_all_files(password='nap4life')
+    # sys.exit()
     # med_api.delete_data(studyid='TEST')
     # med_api.delete_file(fid='5bb2788f5e52330010f10727')
 
@@ -418,6 +420,7 @@ if __name__ == '__main__':
                                   fileformat='scorefile',
                                   filetype='Yo',
                                   studyid='TEST',
+                                  subjectid=1,
                                   versionid=1)
 
     med_api.upload_data(data={'acc': 0.2, 'std':0.1},
