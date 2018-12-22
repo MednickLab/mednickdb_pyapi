@@ -12,8 +12,6 @@ from operator import itemgetter
 import _io
 import base64
 
-# TODO use kwargs instead of a long list of specifiers
-
 param_map = {
     'fid':'id',
 }
@@ -46,7 +44,7 @@ query_kwmap = OrderedDict({
 class MyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, (datetime.datetime, datetime.date)):
-            return time.mktime(obj.timetuple())*1000  # Convert to ms
+            return time.mktime(obj.timetuple())*1000  # Convert to ms since epoch
         if isinstance(obj, numpy.integer):  # TODO test
             return int(obj)
         elif isinstance(obj, numpy.floating):
@@ -66,7 +64,7 @@ class MyDecoder(json.JSONDecoder):
         for k, v in dct.items():
             if isinstance(v, str) and v == '':
                 dct[k] = None
-            if k in ['datemodified','dateexpired']:
+            if k in ['datemodified','dateexpired']: #TODO other dates? anything with the str "date" in it?
                 dct[k] = datetime.datetime.fromtimestamp(v/1000)
             # Parse datestrings back to python datetimes
             if isinstance(v, str) and re.search('[0-9]*-[0-9]*-[0-9]*T[0-9]*:[0-9]*:', v):
@@ -161,22 +159,17 @@ class MednickAPI:
     def upload_file(self, fileobject, fileformat, filetype, fileversion=None, studyid=None, versionid=None, subjectid=None,
                     visitid=None, sessionid=None):
         """Upload a file data to the filestore in the specified location. File_data should be convertable to json.
-        If this is a brand new file, then add, if it exists, then overwrite. This shoudl return file id"""
+        If this is a brand new file, then add, if it exists, then overwrite. Returns file info object"""
         data_packet = _parse_locals_to_data_packet(locals())
         files = {'fileobject': data_packet.pop('fileobject')}
         ret = self.s.post(url=self.server_address + '/files/upload', data={'data':json.dumps(data_packet, cls=MyEncoder)}, files=files)
-        fids = _json_loads(ret)['insertedIds']
-        inserted_fids = [fid for _, fid in sorted(fids.items())]
-        if isinstance(fileobject, list):
-            return inserted_fids
-        else:
-            return inserted_fids[0]
+        return _json_loads(ret)['ops'][0]
 
     def update_file_info(self, fid, **kwargs):
-        """Change the location of a file on the datastore and update its info"""
+        """Change the location of a file on the datastore and update its info. Returns?"""
         data_packet = _parse_locals_to_data_packet(locals())
         ret = self.s.put(url=self.server_address + '/files/update', data=data_packet)
-        return _json_loads(ret)
+        return _json_loads(ret) #TODO should return file info
 
     def update_parsed_status(self, fid, status):
         """Change the parsed status of a file. Status is True when parsed or False otherwise"""
@@ -341,7 +334,7 @@ class MednickAPI:
         return _json_loads(self.s.post(self.server_address + '/data/upload', data={'data': json.dumps(data_packet, cls=MyEncoder)}))
 
     def get_data(self, query=None, discard_subsets=True, format='dataframe_single_index', **kwargs):
-        """Get all the data in the datastore at the specified location. Return is python dictionary"""
+        """Get all the data in the datastore at the specified location. Return format as specified in args"""
         if query:
             for k, v in query_kwmap.items():
                 query = query.replace(k, v)
@@ -391,14 +384,14 @@ class MednickAPI:
             print('Cannot delete all files on the server without correct password!')
 
     def discard_subsets(self, ret_data):
-        hierarchical_specifiers = ['studyid','versionid', 'subjectid','visitid','sessionid']
+        hierarchical_specifiers = ['studyid', 'versionid', 'subjectid','visitid','sessionid']
         for subset_idx in range(len(ret_data)-1, -1, -1): # iterate backwards so we can drop items but dont bugger the indexes
             candidate_subset = ret_data[subset_idx]
             for superset_idx in range(len(ret_data)-1, -1, -1):
                 candidate_superset = ret_data[superset_idx]
                 if subset_idx == superset_idx: # compare int faster than compare dict
                     continue
-                if all(candidate_subset[k] == candidate_superset[k] or candidate_subset[k] is None
+                if all((k not in candidate_subset) or (candidate_subset[k] is None or candidate_subset[k] == candidate_superset[k])
                        for k in hierarchical_specifiers):
                     del ret_data[subset_idx]
                     break

@@ -56,27 +56,27 @@ def test_usecase_1():
     }
     file_data_real = file_info_post.copy()
     with open('testfiles/sleepfile1.edf','rb') as sleepfile:
-        fid = med_api.upload_file(fileobject=sleepfile, **file_info_post)
+        file_info_returned = med_api.upload_file(fileobject=sleepfile, **file_info_post)
 
     with open('testfiles/sleepfile1.edf', 'rb') as sleepfile:
-        downloaded_sleepfile = med_api.download_file(fid)
+        downloaded_sleepfile = med_api.download_file(file_info_returned['_id'])
         assert (downloaded_sleepfile == sleepfile.read())
 
-    #b)
+    # b)
     time.sleep(file_update_time)  # give db 5 seconds to update
-    file_info_get = med_api.get_file_by_fid(fid)
-    file_info_post.update({'filename': 'sleepfile1.edf', 'filedir':'uploads/TEST/1/1/1/1/raw_sleep/'})
+    file_info_get = med_api.get_file_by_fid(file_info_returned['_id'])
+    file_info_post.update({'filename': 'sleepfile1.edf', 'filedir': 'uploads/TEST/1/1/1/1/raw_sleep/'})
     assert dict_issubset(file_info_get, file_info_post)
 
     time.sleep(data_update_time-file_update_time)  # give db 5 seconds to update
-    file_datas = med_api.get_data_from_single_file(filetype='raw_sleep', fid=fid, format='flat_dict')
+    file_datas = med_api.get_data_from_single_file(filetype='raw_sleep', fid=file_info_returned['_id'], format='flat_dict')
     file_data_real.pop('fileformat')
     file_data_real.pop('filetype')
-    file_data_real.update({'raw_sleep.edf_nchan': 3}) #add actual data in file. #TODO add all
+    file_data_real.update({'raw_sleep.edf_nchan': 3})  # add actual data in file. # TODO add all
     assert(any([dict_issubset(file_data, file_data_real) for file_data in file_datas]))
 
     pytest.usecase_1_filedata = file_data_real
-    pytest.usecase_1_fid = fid
+    pytest.usecase_1_filename_version = file_info_get['filename_version']
 
 
 @pytest.mark.dependency(['test_usecase_1'])
@@ -91,7 +91,8 @@ def test_usecase_2():
     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
     with open('testfiles/TEST_Demographics.xlsx', 'rb') as demofile:
         # b)
-        fid = med_api.upload_file(fileobject=demofile, **file_info_post)
+        file_info = med_api.upload_file(fileobject=demofile, **file_info_post)
+        fid = file_info['_id']
         downloaded_demo = med_api.download_file(fid)
         with open('testfiles/TEST_Demographics.xlsx', 'rb') as demofile:
             assert downloaded_demo == demofile.read()
@@ -114,13 +115,13 @@ def test_usecase_2():
 
     pytest.usecase_2_row1 = correct_row1
     pytest.usecase_2_row2 = correct_row2
-    pytest.usecase_2_fid = fid
+    pytest.usecase_2_filename_version = file_info_get['filename_version']
 
-    for correct_row in correct_rows: #TODO test again after merge bug fixed
+    for correct_row in correct_rows:
         assert any([dict_issubset(data_row, correct_row) for data_row in data_rows]), "demographics data downloaded does not match expected"
 
     # e)
-    data_raw_sleep = med_api.get_data(studyid='TEST', versionid=1, filetype='raw_sleep')[0]
+    data_raw_sleep = med_api.get_data(studyid='TEST', versionid=1, filetype='raw_sleep')[0] #FIXME will fail here until filetype is quierable
     assert dict_issubset(data_raw_sleep, pytest.usecase_1_filedata), "sleep data downloaded does not match what was uploaded in usecase 1"
 
 
@@ -141,18 +142,18 @@ def test_usecase_3():
 
     # b)
     time.sleep(5)  # Give db 5 seconds to update
-    correct_fids = [pytest.usecase_1_fid, pytest.usecase_2_fid]
-    fids = med_api.extract_var(med_api.get_files(studyid='TEST', versionid=1), '_id')
-    assert all([fid in correct_fids for fid in fids]), "Missing expected FID's from two previous usecases"
+    correct_filename_versions = [pytest.usecase_1_filename_version, pytest.usecase_2_filename_version]
+    filename_versions = med_api.extract_var(med_api.get_files(studyid='TEST', versionid=1), 'filename_version')
+    assert all([fid in correct_filename_versions for fid in filename_versions]), "Missing expected filename versions from two previous usecases"
 
     # c)
     time.sleep(5)  # Give db 5 seconds to update
     data_rows = med_api.get_data(studyid='TEST', versionid=1, format='flat_dict')
-    correct_row_2 = pytest.usecase_2_row2
-    correct_row_2.update({'MemTaskA.accuracy': 0.9})
+    correct_row_2 = pytest.usecase_2_row2.copy()
+    correct_row_2.update({'MemTaskA.accuracy': 0.9, 'visitid': 1})
     pytest.usecase_3_row2 = correct_row_2
     correct_rows = [pytest.usecase_2_row1, correct_row_2]
-    for correct_row in correct_rows: #TODO test again after merge bug fixed
+    for correct_row in correct_rows:
         assert any([dict_issubset(data_row, correct_row) for data_row in data_rows])
 
 
@@ -168,7 +169,7 @@ def test_usecase_4():
         'fileformat':'scorefile',
         'studyid':'TEST',
         'versionid':1,
-        'subjectid':1,
+        'subjectid':2,
         'visitid':1,
         'sessionid':1,
         'filetype':'scoring'
@@ -183,17 +184,27 @@ def test_usecase_4():
         fid2 = med_api.upload_file(scorefile2,
                                    **file_info2_post)
 
-    scorefile1_data = {'scoring.epochstage': [0, 0, 1, 1, 2, 2, 3, 3, 2, 2], 'scoring.epochoffset': [0, 30, 60, 90, 120, 150, 180, 210, 240, 270], 'scoring.starttime': 1451635302000, 'scoring.mins_in_0': 1, 'scoring.mins_in_1': 1, 'scoring.mins_in_2': 2, 'scoring.mins_in_3': 1, 'scoring.mins_in_4': 0, 'scoring.sleep_efficiency': 0.8, 'scoring.total_sleep_time': 4}
-    scorefile2_data = {'scoring.epochstage': [-1, -1, -1, 0, 0, 0, 0, 0, 0, 0], 'scoring.epochoffset': [0, 30, 60, 90, 120, 150, 180, 210, 240, 270], 'scoring.starttime': 1451635302000, 'scoring.mins_in_0': 3.5, 'scoring.mins_in_1': 0, 'scoring.mins_in_2': 0, 'scoring.mins_in_3': 0, 'scoring.mins_in_4': 0, 'scoring.sleep_efficiency': 0, 'scoring.total_sleep_time': 0}
+    scorefile1_data = {'scoring.epochstage': [-1, -1, -1, 0, 0, 0, 0, 0, 0, 0],
+                       'scoring.epochoffset': [0, 30, 60, 90, 120, 150, 180, 210, 240, 270],
+                       'scoring.starttime': 1451635302000, 'scoring.mins_in_0': 3.5, 'scoring.mins_in_1': 0,
+                       'scoring.mins_in_2': 0, 'scoring.mins_in_3': 0, 'scoring.mins_in_4': 0,
+                       'scoring.sleep_efficiency': 0, 'scoring.total_sleep_time': 0}
+    scorefile2_data = {'scoring.epochstage': [0, 0, 1, 1, 2, 2, 3, 3, 2, 2],
+                       'scoring.epochoffset': [0, 30, 60, 90, 120, 150, 180, 210, 240, 270],
+                       'scoring.starttime': 1451635302000, 'scoring.mins_in_0': 1, 'scoring.mins_in_1': 1,
+                       'scoring.mins_in_2': 2, 'scoring.mins_in_3': 1, 'scoring.mins_in_4': 0,
+                       'scoring.sleep_efficiency': 0.8, 'scoring.total_sleep_time': 4}
 
     # c)
     time.sleep(data_update_time)  # Give db 50 seconds to update
     data_rows = med_api.get_data(studyid='TEST', versionid=1, format='flat_dict')
-    correct_row_1 = pytest.usecase_2_row1
-    correct_row_2 = scorefile1_data.update(pytest.usecase_3_row2)
-    correct_row_3 = scorefile2_data.update(pytest.usecase_2_row2)
+    correct_row_1 = pytest.usecase_2_row1.copy()
+    scorefile1_data.update(pytest.usecase_3_row2)
+    correct_row_2 = scorefile1_data
+    scorefile2_data.update(pytest.usecase_2_row2)
+    correct_row_3 = scorefile2_data
     correct_rows = [correct_row_1, correct_row_2, correct_row_3]
-    for correct_row in correct_rows: #TODO test again after merge bug fixed
+    for correct_row in correct_rows:
         assert any([dict_issubset(data_row, correct_row) for data_row in data_rows])
 
     pytest.usecase_4_row1 = correct_row_1
@@ -212,22 +223,22 @@ def test_usecase_5():
 def test_get_specifiers():
     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
     sids = med_api.get_unique_var_values('studyid', store='data')
-    assert ('TEST' in sids)
+    assert 'TEST' in sids
 
     vids = med_api.get_unique_var_values('versionid', studyid='TEST', store='data')
-    assert (vids == [1])
+    assert vids == [1]
 
     sids = med_api.get_unique_var_values('subjectid', studyid='TEST', store='data')
-    assert (sids == [1, 2])
+    assert sids == [1, 2]
 
     vids = med_api.get_unique_var_values('visitid', studyid='TEST', store='data')
-    assert (vids == [1, 2])
+    assert vids == [1, 2]
 
     sids = med_api.get_unique_var_values('sessionid', studyid='TEST', store='data')
-    assert (sids == [1])
+    assert sids == [1]
 
     filetypes = med_api.get_unique_var_values('filetype', studyid='TEST', store='data')
-    assert (filetypes == ['raw sleep', 'scorefile', 'demographics', 'MemTaskA'])
+    assert set(filetypes) == {'raw sleep', 'scorefile', 'demographics', 'MemTaskA'}
 
 
 def test_update_file_info():

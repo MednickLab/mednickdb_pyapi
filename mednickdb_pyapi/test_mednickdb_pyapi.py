@@ -1,5 +1,6 @@
 from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
 import pytest
+import time
 
 user = 'bdyetton@hotmail.com'
 password = 'Pass1234'
@@ -37,13 +38,13 @@ def test_upload_and_download_file():
     files_on_server_before_upload = med_api.get_files()
     parsed_files_before_upload = med_api.get_unparsed_files()
     with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
-        fid = med_api.upload_file(fileobject=uploaded_version,
+        file_info = med_api.upload_file(fileobject=uploaded_version,
                                   fileformat='scorefile',
                                   studyid='TEST',
                                   subjectid=1,
                                   versionid=1,
                                   filetype='sleep')
-        downloaded_version = med_api.download_file(fid)
+        downloaded_version = med_api.download_file(file_info['_id'])
     with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
         assert downloaded_version == uploaded_version.read()
     files_on_server_after_upload = med_api.get_files()
@@ -62,29 +63,23 @@ def test_upload_and_overwrite():
     """
     med_api = MednickAPI(server_address, user, password)
     with open('testfiles/TEST_Demographics.xlsx', 'rb') as uploaded_version_1:
-        fid1 = med_api.upload_file(fileobject=uploaded_version_1,
+        file1_info_before_overwrite = med_api.upload_file(fileobject=uploaded_version_1,
                                    fileformat='tabular',
                                    studyid='TEST',
                                    subjectid=1,
                                    versionid=1,
                                    filetype='unique_thing_1')
-    downloaded_version_1 = med_api.download_file(fid1)
-    try:
-        file1_info_before_overwrite = med_api.get_file_by_fid(fid1)
-    except:
-        print('Investigate me!')
-        pass
+    downloaded_version_1 = med_api.download_file(file1_info_before_overwrite['_id'])
     file_version_before_overwrite = file1_info_before_overwrite['filename_version']
 
     with open('testfiles/updated_versions/TEST_Demographics.xlsx', 'rb') as uploaded_version_2:
-        fid2 = med_api.upload_file(fileobject=uploaded_version_2,
+        file1_info_after_overwrite = med_api.upload_file(fileobject=uploaded_version_2,
                                    fileformat='tabular',
                                    studyid='TEST',
                                    subjectid=1,
                                    versionid=1,
                                    filetype='unique_thing_1')
-    downloaded_version_2 = med_api.download_file(fid2)
-    file1_info_after_overwrite = med_api.get_file_by_fid(fid2)
+    downloaded_version_2 = med_api.download_file(file1_info_after_overwrite['_id'])
     file_version_after_overwrite = file1_info_after_overwrite['filename_version']
 
     with open('testfiles/updated_versions/TEST_Demographics.xlsx', 'rb') as uploaded_version_2:
@@ -93,14 +88,13 @@ def test_upload_and_overwrite():
         assert downloaded_version_1 != f
 
     #Get all versions, and make sure both versions of the file match what was uploaded
-    # TODO uncomment after bugfix
     all_versions = med_api.get_files(filename='TEST_Demographics.xlsx', previous_versions=True)
     assert all([file in med_api.extract_var(all_versions, 'filename_version') for file in [file_version_after_overwrite, file_version_before_overwrite]])
 
     file = med_api.get_files(filename='TEST_Demographics.xlsx')
     assert len(file) == 1
-    assert fid1 != fid2 #It gets a new fid
-    assert file[0]['_id'] == fid2
+    assert file1_info_before_overwrite['_id'] != file1_info_after_overwrite['_id'] #It gets a new fid
+    assert file[0]['_id'] == file1_info_after_overwrite['_id']
 
     downloaded_version_current = med_api.download_file(file[0]['_id'])
     assert downloaded_version_current == downloaded_version_2
@@ -112,28 +106,33 @@ def test_file_query():
     test_clear_test_study()  # Start Fresh
     med_api = MednickAPI(server_address, user, password)
     with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
-        fid1 = med_api.upload_file(fileobject=uploaded_version,
+        file_info1 = med_api.upload_file(fileobject=uploaded_version,
                                   fileformat='scorefile',
                                   studyid='TEST',
                                   subjectid=1,
                                   versionid=1,
                                   filetype='sleep')
+        fid1 = file_info1['_id']
 
     with open('testfiles/scorefile1.mat', 'rb') as uploaded_version:
-        fid2 = med_api.upload_file(fileobject=uploaded_version,
+        file_info2 = med_api.upload_file(fileobject=uploaded_version,
                                   fileformat='scorefile',
                                   studyid='TEST',
                                   subjectid=2,
                                   versionid=1,
                                   filetype='sleep')
+        fid2 = file_info2['_id']
 
     with open('testfiles/TEST_Demographics.xlsx', 'rb') as uploaded_version_1:
-        fid3 = med_api.upload_file(fileobject=uploaded_version_1,
+        file_info3 = med_api.upload_file(fileobject=uploaded_version_1,
                                    fileformat='tabular',
                                    studyid='TEST',
                                    subjectid=3,
                                    versionid=2,
                                    filetype='unique_thing_2')
+        fid3 = file_info3['_id']
+
+    time.sleep(1)
 
     #Test ==
     fids = med_api.extract_var(med_api.get_files(query='studyid==TEST'),'_id')
@@ -192,12 +191,13 @@ def test_data_query():
     test_clear_test_study()
 
     with open('testfiles/TEST_Demographics.xlsx', 'rb') as uploaded_version_1:
-        fid1 = med_api.upload_file(fileobject=uploaded_version_1,
-                                   fileformat='tabular',
-                                   studyid='TEST',
-                                   subjectid=1,
-                                   versionid=2,
-                                   filetype='unique_thing_3')
+        file_info1 = med_api.upload_file(fileobject=uploaded_version_1,
+                                           fileformat='tabular',
+                                           studyid='TEST',
+                                           subjectid=1,
+                                           versionid=2,
+                                           filetype='unique_thing_3')
+        fid1 = file_info1['_id']
 
     row1 = {'sex':'M', 'age':22, 'edu':12}
     row2 = {'sex':'F', 'age':19, 'edu':8}
@@ -225,6 +225,8 @@ def test_data_query():
                         versionid=1,
                         filetype='demographics',
                         fid=fid1)
+
+    time.sleep(1)
 
     #sanity check to see if we have any data at all:
     data_rows = med_api.get_data(format='nested_dict',studyid='TEST')
