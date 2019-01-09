@@ -16,6 +16,7 @@ param_map = {
     'fid':'id',
 }
 
+# Dict to help convert human readable queries into mongo-esqe queries handeled by backend
 query_kwmap = OrderedDict({
     ' and ': '&',
     ' or ': '*OR*',
@@ -42,7 +43,12 @@ query_kwmap = OrderedDict({
 
 
 class MyEncoder(json.JSONEncoder):
+    """Custom JSON encoding for converting datetimes to time since epoch, and numpy types to simple python types"""
     def default(self, obj):
+        """
+        :param obj: Object which should be converted
+        :return: Converted object
+        """
         if isinstance(obj, (datetime.datetime, datetime.date)):
             return time.mktime(obj.timetuple())*1000  # Convert to ms since epoch
         if isinstance(obj, numpy.integer):  # TODO test
@@ -57,10 +63,21 @@ class MyEncoder(json.JSONEncoder):
 
 class MyDecoder(json.JSONDecoder):
     def __init__(self, *args, **kargs):
+        """
+        Creates a decoder object to add custom decoding on JSON encoded strings
+        :param args: see parent object
+        :param kargs: as above
+        """
         json.JSONDecoder.__init__(self, object_hook=self.parser,
                                   *args, **kargs)
 
     def parser(self, dct):
+        """
+        Custom JSON decoder. Parses known date fields and strings that look like datetimes to python datetime.
+
+        :param dct: Object to parse
+        :return:
+        """
         for k, v in dct.items():
             if isinstance(v, str) and v == '':
                 dct[k] = None
@@ -76,6 +93,14 @@ class MyDecoder(json.JSONDecoder):
 
 
 def _json_loads(ret, file=False):
+    """
+    Helper function to load JSON return object from the requests lib into python objects.
+    Will log exceptions and print extra information when server side exceptions are returned.
+    :param ret: Returned object from requests lib (from get or post)
+    :param file: If a file is returned, set as true. Will return file, and not try to decode from JSON.
+    :return: File is file is true, decoded json if no file
+    :except: Raises error in python if server error detected.
+    """
     try:
         ret.raise_for_status()
     except requests.exceptions.HTTPError as e:
@@ -88,6 +113,11 @@ def _json_loads(ret, file=False):
 
 
 def _parse_locals_to_data_packet(locals_dict):
+    """
+    Takes the locals object (i.e. function inputs as a dict), maps keys from
+    :param locals_dict:
+    :return:
+    """
     if 'self' in locals_dict:
         locals_dict.pop('self')
     if 'kwargs' in locals_dict:
@@ -110,8 +140,25 @@ class MednickAPI:
 
     @staticmethod
     def format_as(ret_data, format='dataframe_single_index'):
+        """
+        Format a return data from database into useful formats
+        :param ret_data: Data to format, as a list of dicts
+        :param format: Format to return, one of:
+         - nested_dict: standard nested object, i.e. do not apply formatting
+         - flat_dict: remove keys in "data", and flatten so each var nested in each key of data is key.var
+            example:
+                [{'data':{'demographics':{'age':22, 'sex':'M'}}}] --> [{'demographics.age':22, 'demographics.sex':'M'}]
+         - dataframe_single_index: If a list with single dict supplied, format as flat_dict,
+                                    but convert to pd.Dataframe with keys as indexs.
+                                   If a list with multiple dict supplied, format as flat_dict,
+                                    but convert to pd.Dataframe with keys as indexs, and stack each dict in list.
+         - dataframe_multi_index: TODO
+        :return: Data formated as specified
+        """
         if format == 'nested_dict':
             return ret_data
+
+        assert isinstance(ret_data, list), """Input of format_as must be list, wrap single objects like [object]"""
 
         row_cont = []
         row_cont_dict = []
@@ -136,6 +183,16 @@ class MednickAPI:
 
     @staticmethod
     def extract_var(list_of_dicts, var, raise_on_missing=True):
+        """
+        Helper function to extract a list of values from a list of dicts
+        example:
+            extract_var([{'a':1, 'b':11}, {'a':2, 'b':22}]) == [1,2]
+
+        :param list_of_dicts: A list of dictionaries, such as file_info objects
+        :param var: The key of the variable to extract
+        :param raise_on_missing: If true, raise an error when the var is missing from any of the dicts in the list
+        :return: Returns a list of the values of the var for each dict
+        """
         if raise_on_missing:
             return [d[var] for d in list_of_dicts]
         else:
@@ -143,10 +200,22 @@ class MednickAPI:
 
     @staticmethod
     def sortby(sort_x, by_key, reverse=True):
+        """
+        Sorts a list of dictionaries (e.g. file_info objects) by a specific key
+        :param sort_x: list of dicts/objects to sort
+        :param by_key: key to sort by
+        :param reverse: if sorting should be reversed
+        :return: sorted list of dicts
+        """
         return sorted(sort_x, key=itemgetter(by_key), reverse=reverse)
 
     def login(self, username, password):
-        """Login to the server. Returns login token and usertype (privilages)"""
+        """
+        Login to the server. Saves the login token.
+        :param username: username to login with (generally an email)
+        :param password: password
+        :return: a tuple of (success, usertype)
+        """
         # TODO
         # self.username = username
         # base_str = self.server_address + '/Login?' + 'Username']=username + '&Password']=password
@@ -158,8 +227,38 @@ class MednickAPI:
     # File related functions
     def upload_file(self, fileobject, fileformat, filetype, fileversion=None, studyid=None, versionid=None, subjectid=None,
                     visitid=None, sessionid=None):
-        """Upload a file data to the filestore in the specified location. File_data should be convertable to json.
-        If this is a brand new file, then add, if it exists, then overwrite. Returns file info object"""
+        """
+        Upload a file data to the filestore in the specified location.
+        If this is a brand new file, then add, if it exists, then overwrite (i.e. set previous version as inactive).
+        Returns file info object
+        :param fileobject: The file object, i.e. the return from open('filename.csv','r+')
+        :param fileformat: Format of the file, this dictates how the file will be parsed by microservices (pyparse).
+            Known parse-able filetypes are currently:
+            - "sleep_scoring" - sleep scoring files. Currently supports edf, mat (hume), xml (NSRR), and various tabular types
+            - "tabular" - any tabular-like data, with column headers and cols for specific subjectid, visitid, etc
+            - "eeg" - edf's or other eeg like files. Basically anything the python package MNE can open
+            TODO:
+            - Actigraphy
+            - Sleep Diaries
+        :param filetype: The "datatype" contained in the file, e.g. "demographics" for demographics related file, etc.
+            Preferred filetypes are:
+             - "sleep_eeg" for all edf, eeg, timeseries containing sleep eeg
+             - "sleep_scoring" for all sleep scoring files (vrmk, mat, csv)
+             - "demographics" for all demographics information (age, sex, etc)
+             - "counterbalance" for a counterbalance assigning subjects/visits/sessions to conditions
+             - "sleep_diary" for all sleep diary information
+             - "sleep_features" for any files with spindle, REM, SO events
+             - "sleep_stats" for all traditional sleep stats (minutes in REM, latency, etc)
+             - Task Names ("WPA", etc)
+
+        :param fileversion: Upload with a specific fileversion. This is usualy managed by the backend. Does this even work? FIXME
+        :param studyid: specifies location in database to upload to
+        :param versionid: specifies location in database to upload to
+        :param subjectid: specifies location in database to upload to
+        :param visitid: specifies location in database to upload to
+        :param sessionid: specifies location in database to upload to
+        :return:
+        """
         data_packet = _parse_locals_to_data_packet(locals())
         files = {'fileobject': data_packet.pop('fileobject')}
         ret = self.s.post(url=self.server_address + '/files/upload', data={'data':json.dumps(data_packet, cls=MyEncoder)}, files=files)
