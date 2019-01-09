@@ -229,7 +229,7 @@ def test_data_query():
     time.sleep(1)
 
     #sanity check to see if we have any data at all:
-    data_rows = med_api.get_data(format='nested_dict',studyid='TEST')
+    data_rows = med_api.get_data(format='nested_dict', studyid='TEST')
     assert len(data_rows) > 0
 
     #Test ==
@@ -275,6 +275,28 @@ def test_data_query():
     # Test complex or
     data_rows = [strip_non_matching_keys(row['data']['demographics'], row1) for row in med_api.get_data(format='nested_dict',query='data.demographics.age<22 or >28')]
     assert all([row in data_rows for row in [row2, row3]])
+
+
+# def test_update_file_info(): #TODO Junbai to add to simple_tests
+#     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
+#     fids = med_api.get_files(studyid='TEST')
+#     file_info_1 = med_api.get_file_by_fid(fid=fids[0]['_id'])
+#     to_add = {'sessionid': 10}
+#     med_api.update_file_info(fid=fids[0]['_id'], file_info=to_add)
+#     file_info_1.update(to_add)
+#     time.sleep(file_update_time)  # Give db 5 seconds to update
+#
+#     file_info_2 = med_api.get_file_by_fid(fids[0]['_id'])
+#     assert (file_info_2 == file_info_1)
+
+
+# def test_parsing_status(): #TODO Junbai to add to simple_tests
+#     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
+#     fids = med_api.get_files(studyid='TEST')
+#     med_api.update_parsed_status(fids[0], False)
+#     time.sleep(5)
+#     fids2 = med_api.get_unparsed_files()
+#     assert (fids[0] in fids2)
 
 
 

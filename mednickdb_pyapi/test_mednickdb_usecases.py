@@ -73,10 +73,12 @@ def test_usecase_1():
     file_data_real.pop('fileformat')
     file_data_real.pop('filetype')
     file_data_real.update({'raw_sleep.edf_nchan': 3})  # add actual data in file. # TODO add all
-    assert(any([dict_issubset(file_data, file_data_real) for file_data in file_datas]))
-
     pytest.usecase_1_filedata = file_data_real
     pytest.usecase_1_filename_version = file_info_get['filename_version']
+
+    assert(any([dict_issubset(file_data, file_data_real) for file_data in file_datas])), "Is pyparse running?"
+
+
 
 
 @pytest.mark.dependency(['test_usecase_1'])
@@ -238,26 +240,4 @@ def test_get_specifiers():
     assert sids == [1]
 
     filetypes = med_api.get_unique_var_values('filetype', studyid='TEST', store='data')
-    assert set(filetypes) == {'raw sleep', 'scorefile', 'demographics', 'MemTaskA'}
-
-
-def test_update_file_info():
-    med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
-    fids = med_api.get_files(studyid='TEST')
-    file_info_1 = med_api.get_file_by_fid(fid=fids[0])
-    to_add = {'sessionid': 10}
-    med_api.update_file_info(fid=fids[0], file_info=to_add)
-    file_info_1.update(to_add)
-    time.sleep(5)  # Give db 5 seconds to update
-
-    file_info_2 = med_api.get_file_by_fid(fids[0])
-    assert (file_info_2 == file_info_1)
-
-
-def test_parsing_status():
-    med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
-    fids = med_api.get_files(studyid='TEST')
-    med_api.update_parsed_status(fids[0], False)
-    time.sleep(5)
-    fids2 = med_api.get_unparsed_files()
-    assert (fids[0] in fids2)
+    assert set(filetypes) == {'raw_sleep', 'scoring', 'demographics', 'MemTaskA'}
