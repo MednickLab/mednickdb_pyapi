@@ -52,7 +52,7 @@ def test_usecase_1():
         'subjectid':1,
         'visitid':1,
         'sessionid':1,
-        'filetype':'raw_sleep',
+        'filetype':'sleep_eeg',
     }
     file_data_real = file_info_post.copy()
     with open('testfiles/sleepfile1.edf','rb') as sleepfile:
@@ -65,14 +65,14 @@ def test_usecase_1():
     # b)
     time.sleep(file_update_time)  # give db 5 seconds to update
     file_info_get = med_api.get_file_by_fid(file_info_returned['_id'])
-    file_info_post.update({'filename': 'sleepfile1.edf', 'filedir': 'uploads/TEST/1/1/1/1/raw_sleep/'})
+    file_info_post.update({'filename': 'sleepfile1.edf', 'filedir': 'uploads/TEST/1/1/1/1/sleep_eeg/'})
     assert dict_issubset(file_info_get, file_info_post)
 
     time.sleep(data_update_time-file_update_time)  # give db 5 seconds to update
-    file_datas = med_api.get_data_from_single_file(filetype='raw_sleep', fid=file_info_returned['_id'], format='flat_dict')
+    file_datas = med_api.get_data_from_single_file(filetype='sleep_eeg', fid=file_info_returned['_id'], format='flat_dict')
     file_data_real.pop('fileformat')
     file_data_real.pop('filetype')
-    file_data_real.update({'raw_sleep.edf_nchan': 3})  # add actual data in file. # TODO add all
+    file_data_real.update({'sleep_eeg.edf_nchan': 3})  # add actual data in file. # TODO add all
     pytest.usecase_1_filedata = file_data_real
     pytest.usecase_1_filename_version = file_info_get['filename_version']
 
@@ -123,8 +123,8 @@ def test_usecase_2():
         assert any([dict_issubset(data_row, correct_row) for data_row in data_rows]), "demographics data downloaded does not match expected"
 
     # e)
-    data_raw_sleep = med_api.get_data(studyid='TEST', versionid=1, filetype='raw_sleep')[0] #FIXME will fail here until filetype is quierable
-    assert dict_issubset(data_raw_sleep, pytest.usecase_1_filedata), "sleep data downloaded does not match what was uploaded in usecase 1"
+    data_sleep_eeg = med_api.get_data(studyid='TEST', versionid=1, filetype='sleep_eeg')[0] #FIXME will fail here until filetype is quierable
+    assert dict_issubset(data_sleep_eeg, pytest.usecase_1_filedata), "sleep data downloaded does not match what was uploaded in usecase 1"
 
 
 @pytest.mark.dependency(['test_usecase_2'])
@@ -134,7 +134,7 @@ def test_usecase_3():
     med_api = MednickAPI(server_address, 'test_ra_account@uci.edu', 'Pass1234')
     fid_for_manual_upload = med_api.extract_var(med_api.get_files(studyid='TEST'), '_id')[0] # get a random fid
     data_post = {'studyid': 'TEST',
-                 'filetype': 'MemTaskA',
+                 'filetype': 'memtesta',
                  'data': {'accuracy': 0.9},
                  'versionid': 1,
                  'subjectid': 2,
@@ -152,7 +152,7 @@ def test_usecase_3():
     time.sleep(5)  # Give db 5 seconds to update
     data_rows = med_api.get_data(studyid='TEST', versionid=1, format='flat_dict')
     correct_row_2 = pytest.usecase_2_row2.copy()
-    correct_row_2.update({'MemTaskA.accuracy': 0.9, 'visitid': 1})
+    correct_row_2.update({'memtesta.accuracy': 0.9, 'visitid': 1})
     pytest.usecase_3_row2 = correct_row_2
     correct_rows = [pytest.usecase_2_row1, correct_row_2]
     for correct_row in correct_rows:
@@ -168,13 +168,13 @@ def test_usecase_4():
 
     # b) uploading some scorefiles
     file_info1_post = {
-        'fileformat':'scorefile',
+        'fileformat':'sleep_scoring',
         'studyid':'TEST',
         'versionid':1,
         'subjectid':2,
         'visitid':1,
         'sessionid':1,
-        'filetype':'scoring'
+        'filetype':'sleep_scoring'
     }
     with open('testfiles/scorefile1.mat', 'rb') as scorefile1:
         fid1 = med_api.upload_file(scorefile1,
@@ -186,16 +186,16 @@ def test_usecase_4():
         fid2 = med_api.upload_file(scorefile2,
                                    **file_info2_post)
 
-    scorefile1_data = {'scoring.epochstage': [-1, -1, -1, 0, 0, 0, 0, 0, 0, 0],
-                       'scoring.epochoffset': [0, 30, 60, 90, 120, 150, 180, 210, 240, 270],
-                       'scoring.starttime': 1451635302000, 'scoring.mins_in_0': 3.5, 'scoring.mins_in_1': 0,
-                       'scoring.mins_in_2': 0, 'scoring.mins_in_3': 0, 'scoring.mins_in_4': 0,
-                       'scoring.sleep_efficiency': 0, 'scoring.total_sleep_time': 0}
-    scorefile2_data = {'scoring.epochstage': [0, 0, 1, 1, 2, 2, 3, 3, 2, 2],
-                       'scoring.epochoffset': [0, 30, 60, 90, 120, 150, 180, 210, 240, 270],
-                       'scoring.starttime': 1451635302000, 'scoring.mins_in_0': 1, 'scoring.mins_in_1': 1,
-                       'scoring.mins_in_2': 2, 'scoring.mins_in_3': 1, 'scoring.mins_in_4': 0,
-                       'scoring.sleep_efficiency': 0.8, 'scoring.total_sleep_time': 4}
+    scorefile1_data = {'sleep_scoring.epochstage': [-1, -1, -1, 0, 0, 0, 0, 0, 0, 0],
+                       'sleep_scoring.epochoffset': [0, 30, 60, 90, 120, 150, 180, 210, 240, 270],
+                       'sleep_scoring.starttime': 1451635302000, 'sleep_scoring.mins_in_0': 3.5, 'sleep_scoring.mins_in_1': 0,
+                       'sleep_scoring.mins_in_2': 0, 'sleep_scoring.mins_in_3': 0, 'sleep_scoring.mins_in_4': 0,
+                       'sleep_scoring.sleep_efficiency': 0, 'sleep_scoring.total_sleep_time': 0}
+    scorefile2_data = {'sleep_scoring.epochstage': [0, 0, 1, 1, 2, 2, 3, 3, 2, 2],
+                       'sleep_scoring.epochoffset': [0, 30, 60, 90, 120, 150, 180, 210, 240, 270],
+                       'sleep_scoring.starttime': 1451635302000, 'sleep_scoring.mins_in_0': 1, 'sleep_scoring.mins_in_1': 1,
+                       'sleep_scoring.mins_in_2': 2, 'sleep_scoring.mins_in_3': 1, 'sleep_scoring.mins_in_4': 0,
+                       'sleep_scoring.sleep_efficiency': 0.8, 'sleep_scoring.total_sleep_time': 4}
 
     # c)
     time.sleep(data_update_time)  # Give db 50 seconds to update
@@ -218,7 +218,7 @@ def test_usecase_4():
 def test_usecase_5():
     # a)
     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
-    data_rows = med_api.get_data(query='studyid=TEST and data.MemTaskA.accuracy>=0.9', format='flat_dict')
+    data_rows = med_api.get_data(query='studyid=TEST and data.memtesta.accuracy>=0.9', format='flat_dict')
     assert any([dict_issubset(data_row, pytest.usecase_3_row2) for data_row in data_rows])
 
 
@@ -240,4 +240,4 @@ def test_get_specifiers():
     assert sids == [1]
 
     filetypes = med_api.get_unique_var_values('filetype', studyid='TEST', store='data')
-    assert set(filetypes) == {'raw_sleep', 'scoring', 'demographics', 'MemTaskA'}
+    assert set(filetypes) == {'sleep_eeg', 'sleep_scoring', 'demographics', 'memtesta'}

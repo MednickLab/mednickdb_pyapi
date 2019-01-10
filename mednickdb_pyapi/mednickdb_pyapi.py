@@ -233,15 +233,15 @@ class MednickAPI:
         Returns file info object
         :param fileobject: The file object, i.e. the return from open('filename.csv','r+')
         :param fileformat: Format of the file, this dictates how the file will be parsed by microservices (pyparse).
-            Known parse-able filetypes are currently:
+            Known parse-able filetypes are currently (others will be ignored by parsing microservices):
             - "sleep_scoring" - sleep scoring files. Currently supports edf, mat (hume), xml (NSRR), and various tabular types
             - "tabular" - any tabular-like data, with column headers and cols for specific subjectid, visitid, etc
             - "eeg" - edf's or other eeg like files. Basically anything the python package MNE can open
             TODO:
-            - Actigraphy
-            - Sleep Diaries
+            - "actigraphy"
+            - "sleep_diaries"
         :param filetype: The "datatype" contained in the file, e.g. "demographics" for demographics related file, etc.
-            Preferred filetypes are:
+            Can be anything, but preferred filetypes are:
              - "sleep_eeg" for all edf, eeg, timeseries containing sleep eeg
              - "sleep_scoring" for all sleep scoring files (vrmk, mat, csv)
              - "demographics" for all demographics information (age, sex, etc)
@@ -265,25 +265,39 @@ class MednickAPI:
         return _json_loads(ret)['ops'][0]
 
     def update_file_info(self, fid, **kwargs):
-        """Change the location of a file on the datastore and update its info. Returns?"""
+        """
+        Change the location of a file on the datastore and update its info.
+        :param fid: fid of file to update
+        :param kwargs: a list of keys and values to update with,
+            e.g. update_file_info(fid, studyid='TEST') or update_file_info(fid, {'studyid':'TEST'})
+        :return: Unknown, should return updated file info. TODO
+        """
         data_packet = _parse_locals_to_data_packet(locals())
         ret = self.s.put(url=self.server_address + '/files/update', data=data_packet)
         return _json_loads(ret) #TODO should return file info
 
-    def update_parsed_status(self, fid, status):
-        """Change the parsed status of a file. Status is True when parsed or False otherwise"""
-        # FIXME as of 1.2.2 this function does not take status
+    def update_parsed_status(self, fid, status: bool):
+        """
+        Change the parsed status of a file. Status is True when parsed or False otherwise
+        :param fid: the fid of the file to change
+        :param status: The status (True | false) to change to  FIXME as of 1.2.2 this function does not take status, and can only go from false->true
+        :return:
+        """
+
         ret = self.s.put(url=self.server_address + '/files/updateParsedStatus', data={'id':fid, 'status':status})
         return _json_loads(ret)
 
     def delete_file(self, fid, delete_all_versions=False,
                     reactivate_previous=False,
                     remove_associated_data=False):
-        """Delete a file from the filestore.
-            Args:
-                delete_all_versions: If true, delete all version of this file
-                reactivate_previous: If true, set any old versions as the active version, and trigger a reparse of these files so there data is added to the datastore
-                remove_associated_data: If true, purge datastore of all data associated with this file
+        """
+        Delete a file from the filestore.
+
+        :param fid: the fid of the file to delete
+        :param delete_all_versions: If true, delete all version of this file
+        :param reactivate_previous: If true, set any old versions as the active version, and trigger a reparse of these files so there data is added to the datastore
+        :param remove_associated_data: If true, purge datastore of all data associated with this file
+        :return:
         """
         locals_vars = locals().copy()
         name_map = {
@@ -296,10 +310,34 @@ class MednickAPI:
         data = {name_map[k]: v for k, v in locals_vars.items()}
         return _json_loads(self.s.post(self.server_address + '/files/expire', data=data))
 
-    def get_files(self, query=None, previous_versions=False, format='nested_dict', **kwargs):
-        """Retrieves a list of file info from files in the file store that match the above specifiers.
+    def get_files(self, query: str=None, previous_versions: bool=False, format: str='nested_dict', **kwargs):
+        """
+        Retrieves a list of file info from files in the file store that match the above specifiers.
            When querying, any keys in the file profile may be included, and only matching files for all will be returned.
-           Return file info's are sorted by datemodified, see format_as for return format options.
+           Return file info's are sorted by datemodified
+        :param query: str version of a query, supports the following operators, see unittest for more examples
+
+            ' and '  - and together operations ('subjectid==1 and studyid==TEST'), i.e. both operands must eval to true
+            ' or '  - or together operations ('subjectid==1 or studyid==TEST'), i.e. one operands must eval to true
+            ' >= '  - greater than equal to, e.g. 'subjectid >= 1'
+            ' > '  - greater than, e.g. 'subjectid > 1'
+            ' <= '  - less than equal to, e.g. 'subjectid <= 20'
+            ' < ' - less than, e.g. 'subjectid < 20'
+            ' not in ' - key not in list, e.g. 'subjectid not in [20,21,22]'
+            ' in ' - key in list, e.g. 'subjectid in [20,21,22]'
+            ' not ' - key not equal to, e.g. 'subjectid not 20'
+            ' != ' same as not
+            ' = ' key is value, e.g. subjectid == 20
+            ' == ' same as above
+            ' & ' and together operations ('subjectid==1 & studyid==TEST') -> ('subjectid==1 and studyid==TEST')
+            ' | ' or together operations ('subjectid==1 | studyid==TEST') -> ('subjectid==1 or studyid==TEST')
+
+            All operands can be with or without a single whitespace either side
+
+        :param previous_versions: Whether to return previous, non-active versions of the file also
+        :param format: Format to return as, see format_as for possibilities
+        :param kwargs: alternative way to query params, e.g. get_files(studyid='TEST') or get_files(kwargs={'studyid':'TEST'})
+        :return: a list/dataframe of file_info objects that match
         """
         if query:
             for k, v in query_kwmap.items():
@@ -323,43 +361,78 @@ class MednickAPI:
         return ret
 
     def get_file_by_fid(self, fid):
-        """Get the meta data associated with a file id (i.e. the data associated with this id in the filestore)"""
+        """
+        Get the file_info associated with a file id (i.e. the data associated with this id in the filestore)
+        :param fid: the fid to get for
+        :return: file_info associated with fid
+        """
         data_packet = _parse_locals_to_data_packet(locals())
         return _json_loads(self.s.get(url=self.server_address + '/files/info', params={'id': fid}))
 
     def download_file(self, fid):
-        """Downloads a file that matches the file id as binary data"""
+        """
+        Downloads the binary data for that fid, can be saved to disk as ```open("filename.txt", "wb").write(download_file(fid))```
+        :param fid: the fid of the file to download
+        :return: binary data of file
+        """
         return _json_loads(self.s.get(url=self.server_address + '/files/download', params={'id': fid}), file=True)
 
     def download_files(self, fids):
-        """Downloads a number of files from a list of file id's"""
+        """
+        Downloads a number of files from a list of file id's
+        :param fids: list of fids to download for
+        :return: list of file binaries
+        """
         fids_param = '*AND*'.join(fids)
         return _json_loads(self.s.get(url=self.server_address + '/files/downloadmultiple', params={'id': fids_param}))
 
     def delete_multiple(self, fids):
-        """Deletes a list of files coresponding to the given fileids. Not Tested TODO"""
+        """
+        Deletes a list of files corresponding to the given fids.
+        :param fids: list of fids to delete
+        :return: ? TODO
+        """
         fids_param = '*AND*'.join(fids)
         return _json_loads(self.s.delete(url=self.server_address + '/files/expiremultiple', data={'id': fids_param}))
 
     def get_deleted_files(self):
-        """Retrieves a list of fids for deleted files from the file store that match the above specifiers"""
+        """
+        Retrieves a list of fids for deleted files from the file store, no querying to file these files is done (TODO)
+        :return: A huge list of all the file_infos of the files that have been deleted
+        """
         return _json_loads(self.s.get(url=self.server_address + '/files/expired'))
 
     def get_unparsed_files(self, previous_versions=False):
-        """Return a list of fid's for unparsed files"""
+        """
+        Return a list of fid's for unparsed files
+        :param previous_versions: if true include previous versions. FIXME this would be better as an actual backend option
+        :return: file_infos of unparsed files
+        """
         files = _json_loads(self.s.get(self.server_address + '/files/unparsed'))
         if not previous_versions:
             files = [file for file in files if file['active']]
         return files
 
-    def get_parsed_files(self):
-        """Return a list of fid's for unparsed files"""
-        return _json_loads(self.s.get(self.server_address + '/files/parsed'))
+    def get_parsed_files(self, previous_versions=False):
+        """
+        Return a list of fid's for parsed files
+        :param previous_versions: if true include previous versions. FIXME this would be better as an actual backend option
+        :return: file_infos of parsed files
+        """
+        files = _json_loads(self.s.get(self.server_address + '/files/parsed'))
+        if not previous_versions:
+            files = [file for file in files if file['active']]
+        return files
 
     def get_unique_var_values(self, var, store, **kwargs):
-        """Get possible values of a variable from either data or files store.
+        """
+        Get possible values of a hierarchical specifier variable from either data or files store.
         For example, get all filetypes for studyid=TEST from file store:
-            get_unique_var_values('filetype', store='files', studyid='TEST')
+            get_unique_var_values('filetype', store='files', studyid='TEST') = [demographics, sleep_scoring, memtesta]
+        :param var: variable to get unique values for, e.g.
+        :param store: store to get data from (data or files)
+        :param kwargs: specific place to search at, i.e. subjectid=1, studyid='TEST'
+        :return: unique values of that variable
         """
         if store == 'data':
             ret = self.get_data(**kwargs, format='nested_dict')
