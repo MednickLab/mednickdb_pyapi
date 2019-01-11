@@ -209,6 +209,29 @@ class MednickAPI:
         """
         return sorted(sort_x, key=itemgetter(by_key), reverse=reverse)
 
+    @staticmethod
+    def discard_subsets(object_list):
+        """
+        From a list of objects, remove the objects that are complete subsets of other objects.
+        This does not check data, just ['studyid', 'versionid', 'subjectid','visitid','sessionid'] keys.
+        For example, {'studyid':'TEST', 'versionid':1} is a subset of {'studyid':'TEST', 'versionid':1, 'subjectid':1}
+        and therefore would be removed from the list
+        :param object_list: The list of objects to remove subsets from.
+        :return: the object_list with subsets removed
+        """
+        hierarchical_specifiers = ['studyid', 'versionid', 'subjectid','visitid','sessionid']
+        for subset_idx in range(len(object_list) - 1, -1, -1): # iterate backwards so we can drop items but dont bugger the indexes
+            candidate_subset = object_list[subset_idx]
+            for superset_idx in range(len(object_list) - 1, -1, -1):
+                candidate_superset = object_list[superset_idx]
+                if subset_idx == superset_idx: # compare int faster than compare dict
+                    continue
+                if all((k not in candidate_subset) or (candidate_subset[k] is None or candidate_subset[k] == candidate_superset[k])
+                       for k in hierarchical_specifiers):
+                    del object_list[subset_idx]
+                    break
+        return object_list
+
     def login(self, username, password):
         """
         Login to the server. Saves the login token.
@@ -233,7 +256,7 @@ class MednickAPI:
         Returns file info object
         :param fileobject: The file object, i.e. the return from open('filename.csv','r+')
         :param fileformat: Format of the file, this dictates how the file will be parsed by microservices (pyparse).
-            Known parse-able filetypes are currently (others will be ignored by parsing microservices):
+            Known parse-able fileformats are currently (others will be ignored by parsing microservices):
             - "sleep_scoring" - sleep scoring files. Currently supports edf, mat (hume), xml (NSRR), and various tabular types
             - "tabular" - any tabular-like data, with column headers and cols for specific subjectid, visitid, etc
             - "eeg" - edf's or other eeg like files. Basically anything the python package MNE can open
@@ -497,10 +520,21 @@ class MednickAPI:
 
     # Data Functions
     def upload_data(self, data: dict, studyid, versionid, filetype, fid, subjectid, visitid=None, sessionid=None):
-        """Upload a data to the datastore in the specified location. data should be a single object of key:values and convertable to json.
-        Specifiers like studyid etc contained in the data object will be extracted and used before any in the function arguments.
-        If this is a new location (no data exists), then add, if it exists, merge or overwrite.
-        If this data came from a particular file in the server, then please add a file id to link back to that file"""
+        """
+        Upload a data to the datastore in the specified location.
+            Specifiers like studyid etc contained in the data object will be extracted and used before any in the function arguments.
+            If this is a new location (no data exists), then add, if it exists, merge or overwrite.
+
+        :param data: Single level object of key:values and convertable to json.
+        :param studyid: where to put on the data store
+        :param versionid: where to put on the data store
+        :param filetype: The type of data, see upload_file for standard values
+        :param fid: If this data came from a particular file in the server, then add a file id to link back to that file
+        :param subjectid: where to put on the data store
+        :param visitid: where to put on the data store
+        :param sessionid: where to put on the data store
+        :return: file_info of uploaded data? TODO test
+        """
         data_packet = _parse_locals_to_data_packet(locals())
         data_packet['sourceid'] = data_packet.pop('id')
         return _json_loads(self.s.post(self.server_address + '/data/upload', data={'data': json.dumps(data_packet, cls=MyEncoder)}))
@@ -524,54 +558,64 @@ class MednickAPI:
         return rows
 
     def delete_data(self, **kwargs):
-        """Delete all data at a particular level of the hierarchy or using a specific dataid given
-        the data id of the data object (returned from get_data as "_id")"""
+        """
+        Delete all data at a particular level of the hierarchy or using a specific dataid given
+        the data id of the data object (returned from get_data as "_id")
+
+        :param kwargs: Where to delete data, e.g. delete_data(studyid=TEST), delete all data with SubjectID=TEST,
+            if id in kwargs, then delete that specific profile with mongo id==id
+        """
         delete_param_name = 'id'
         if delete_param_name in kwargs:
-            return _json_loads(self.s.delete(self.server_address + '/data/expire', data={delete_param_name: kwargs[delete_param_name]}))
+            _json_loads(self.s.delete(self.server_address + '/data/expire', data={delete_param_name: kwargs[delete_param_name]}))
         else:
             rows = self.get_data(**kwargs, format='nested_dict', discard_subsets=False)
             for row in rows:
                 self.delete_data(id=row['_id'])
 
     def get_data_from_single_file(self, filetype, fid, format='dataframe_single_index'):
-        """ Get the data in the datastore associated with a file
-        (i.e. get the data that was extracted from that file on upload)"""
+        """
+        Get the data in the datastore associated with a file (i.e. get the data that was extracted from that file on upload)
+
+        :param filetype: The filetype of the data to get #FIXME this could be pulled from the file itself after a query to the filestore?
+        :param fid: The file which generated the data you want to get back
+        :param format: Return format. See format_as
+        :return: the data profiles where the parsing of that file added data
+        """
         return self.get_data('data.'+filetype+'.sourceid='+fid, format=format)
 
     def delete_data_from_single_file(self, fid):
-        """ Deletes the data in the datastore associated with a file
-        (i.e. get the data that was extracted from that file on upload)"""
+        """
+        Deletes the data in the datastore associated with a file
+        (i.e. get the data that was extracted from that file on upload)
+        :param fid:
+        :return: TODO ?
+        """
         ret = self.s.delete(self.server_address + '/data/expireByFile', data={'id':fid})
         return _json_loads(ret)
 
-    def delete_all_files(self, password):
-        """Delete all files on the DB, use with extreme caution"""
-        if password == 'nap4life':
+    def _delete_all_files(self, password):
+        """
+        Delete all files on the DB, use with extreme caution. Do you really need to use this?
+        :param password: the password to use this program
+        :return:
+        """
+        if password == 'i_am_deleting_everything':
             files = self.get_files()
-            print(len(files), 'found, beginning delete...')
+            print(len(files), 'found, beginning delete of ALL FILES on the server...')
             for file in files:
                 print(self.delete_file(file['_id']))
         else:
             print('Cannot delete all files on the server without correct password!')
 
-    def discard_subsets(self, ret_data):
-        hierarchical_specifiers = ['studyid', 'versionid', 'subjectid','visitid','sessionid']
-        for subset_idx in range(len(ret_data)-1, -1, -1): # iterate backwards so we can drop items but dont bugger the indexes
-            candidate_subset = ret_data[subset_idx]
-            for superset_idx in range(len(ret_data)-1, -1, -1):
-                candidate_superset = ret_data[superset_idx]
-                if subset_idx == superset_idx: # compare int faster than compare dict
-                    continue
-                if all((k not in candidate_subset) or (candidate_subset[k] is None or candidate_subset[k] == candidate_superset[k])
-                       for k in hierarchical_specifiers):
-                    del ret_data[subset_idx]
-                    break
-        return ret_data
-
     def __del__(self):
+        """
+        Triggers logout. Do we need this? FIXME NotImplemented
+        :return:
+        """
         # TODO, this should trigger logout.
         pass
+
 
 if __name__ == '__main__':
 

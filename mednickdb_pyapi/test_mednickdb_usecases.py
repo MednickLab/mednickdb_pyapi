@@ -46,7 +46,7 @@ def test_usecase_1():
     #a)
     med_api = MednickAPI(server_address, 'test_ra_account@uci.edu', 'pass1234')
     file_info_post = {
-        'fileformat':'sleep',
+        'fileformat':'eeg',
         'studyid':'TEST',
         'versionid':1,
         'subjectid':1,
