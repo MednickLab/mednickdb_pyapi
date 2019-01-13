@@ -72,11 +72,11 @@ def test_usecase_1():
     file_datas = med_api.get_data_from_single_file(filetype='sleep_eeg', fid=file_info_returned['_id'], format='flat_dict')
     file_data_real.pop('fileformat')
     file_data_real.pop('filetype')
-    file_data_real.update({'sleep_eeg.edf_nchan': 3})  # add actual data in file. # TODO add all
+    file_data_real.update({'sleep_eeg.eeg_nchan': 3, 'sleep_eeg.eeg_sfreq':128, 'sleep_eeg.eeg_meas_date':1041380737000, 'sleep_eeg.eeg_ch_names': ['C3A2', 'C4A1', 'ECG']})  # add actual data in file. # TODO add all
     pytest.usecase_1_filedata = file_data_real
     pytest.usecase_1_filename_version = file_info_get['filename_version']
 
-    assert(any([dict_issubset(file_data, file_data_real) for file_data in file_datas])), "Is pyparse running?"
+    assert(any([dict_issubset(file_data, file_data_real) for file_data in file_datas])), "Is pyparse running? (and working)"
 
 
 
@@ -123,7 +123,7 @@ def test_usecase_2():
         assert any([dict_issubset(data_row, correct_row) for data_row in data_rows]), "demographics data downloaded does not match expected"
 
     # e)
-    data_sleep_eeg = med_api.get_data(studyid='TEST', versionid=1, filetype='sleep_eeg')[0] #FIXME will fail here until filetype is quierable
+    data_sleep_eeg = med_api.get_data(studyid='TEST', versionid=1, filetype='sleep_eeg')[0] #FIXME will fail here until filetype is query-able
     assert dict_issubset(data_sleep_eeg, pytest.usecase_1_filedata), "sleep data downloaded does not match what was uploaded in usecase 1"
 
 

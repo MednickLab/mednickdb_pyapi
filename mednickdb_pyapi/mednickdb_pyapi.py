@@ -455,7 +455,7 @@ class MednickAPI:
         :param var: variable to get unique values for, e.g.
         :param store: store to get data from (data or files)
         :param kwargs: specific place to search at, i.e. subjectid=1, studyid='TEST'
-        :return: unique values of that variable
+        :return: unique values of that variable, or empty if that variable does not exist
         """
         if store == 'data':
             ret = self.get_data(**kwargs, format='nested_dict')
@@ -533,7 +533,7 @@ class MednickAPI:
         :param subjectid: where to put on the data store
         :param visitid: where to put on the data store
         :param sessionid: where to put on the data store
-        :return: file_info of uploaded data? TODO test
+        :return: file_info of uploaded data? TODO change to return the whole data object
         """
         data_packet = _parse_locals_to_data_packet(locals())
         data_packet['sourceid'] = data_packet.pop('id')
@@ -582,6 +582,7 @@ class MednickAPI:
         :param format: Return format. See format_as
         :return: the data profiles where the parsing of that file added data
         """
+        # TODO filter the returned object by just data that came from fid
         return self.get_data('data.'+filetype+'.sourceid='+fid, format=format)
 
     def delete_data_from_single_file(self, fid):
