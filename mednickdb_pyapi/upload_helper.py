@@ -1,7 +1,7 @@
 import sys
 import glob
 import re
-from typing import List
+from typing import List, Tuple, Union
 
 re_i_type = '\d+'
 re_s_type = '[a-z0-9]*'
@@ -20,7 +20,7 @@ type_map = {'int':'\d+',
             'str':'[A-z0-9]*'}
 
 
-def _parse_args_to_reg_ex(search_pattern: str):
+def _parse_args_to_reg_ex(search_pattern: str) -> Tuple[str, List[str], List[str]]:
     """
     Take a human readable string pattern and parse to a re expression, and a set of keys and types to extract from a filename
     :param search_pattern: A string to match files to, where specifiers, like subjectid, visitid, etc can be extracted by adding {subjectid}.
@@ -51,7 +51,7 @@ def _parse_args_to_reg_ex(search_pattern: str):
     return re_exp, pattern_keys, pattern_types
 
 
-def _file_path_to_upload_info(file_path: str, re_exp: str, pattern_keys: List[str], pattern_types: List[str]):
+def _file_path_to_upload_info(file_path: str, re_exp: str, pattern_keys: List[str], pattern_types: List[str]) -> dict:
     """
     To be used in conjunction with _parse_args_to_reg_ex.
     Parsing can automatically remove parts of the filename and set as any
@@ -73,7 +73,7 @@ def _file_path_to_upload_info(file_path: str, re_exp: str, pattern_keys: List[st
     return file_info
 
 
-def run_upload_helper(folder_to_search: str, pattern: str, default_upload_args: str=None):
+def run_upload_helper(folder_to_search: str, pattern: str, default_upload_args: str=None) -> Union[List[dict], None]:
     """
     Searches through a folder and uploads file that match pattern. Can extract upload dict key:value pairs from filenames.
     :param folder_to_search: abs or regular path to folder to search through e.g. 'C:/Users/bdyet/data/'
@@ -114,7 +114,7 @@ def run_upload_helper(folder_to_search: str, pattern: str, default_upload_args: 
     return files_to_actually_upload
 
 
-def _gather_files_to_upload(folder_to_search: str, pattern: str, default_upload_args: str=None):
+def _gather_files_to_upload(folder_to_search: str, pattern: str, default_upload_args: str=None) -> Tuple[List[dict], int]:
     """
     Searches through a folder and uploads file that match pattern. Can extract upload dict key:value pairs from filenames.
     :param folder_to_search: abs or regular path to folder to search through e.g. 'C:/Users/bdyet/data/'
