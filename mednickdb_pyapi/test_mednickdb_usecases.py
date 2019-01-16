@@ -25,6 +25,9 @@ def pytest_namespace():
 
 
 def test_clear_test_study():
+    """
+    Clear all data and files with the studyid of "TEST". This esentually refreshes the database for new testing.
+    """
     med_api = MednickAPI(server_address, 'test_grad_account@uci.edu', 'Pass1234')
     fids = med_api.extract_var(med_api.get_files(studyid='TEST'), '_id')
     if fids:
