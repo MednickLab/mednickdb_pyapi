@@ -127,7 +127,7 @@ def _parse_locals_to_data_packet(locals_dict):
 
 
 class MednickAPI:
-    def __init__(self, server_address, username, password):
+    def __init__(self, username, password, server_address='http://saclab.ss.uci.edu:8000'):
         """server_address address constructor"""
         self.server_address = server_address
         self.s = requests.session()

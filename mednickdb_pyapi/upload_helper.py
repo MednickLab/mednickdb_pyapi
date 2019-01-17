@@ -2,6 +2,8 @@ import sys
 import glob
 import re
 from typing import List, Tuple, Union
+from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
+import getpass
 
 re_i_type = '\d+'
 re_s_type = '[a-z0-9]*'
@@ -73,7 +75,7 @@ def _file_path_to_upload_info(file_path: str, re_exp: str, pattern_keys: List[st
     return file_info
 
 
-def run_upload_helper(folder_to_search: str, pattern: str, default_upload_args: str=None) -> Union[List[dict], None]:
+def run_upload_helper(folder_to_search: str, pattern: str, default_upload_args: dict=None) -> Union[List[dict], None]:
     """
     Searches through a folder and uploads file that match pattern. Can extract upload dict key:value pairs from filenames.
     :param folder_to_search: abs or regular path to folder to search through e.g. 'C:/Users/bdyet/data/'
@@ -84,6 +86,9 @@ def run_upload_helper(folder_to_search: str, pattern: str, default_upload_args: 
         e.g. 'studyid=PSTIM otherkey=somevalue'
     :return: a list of sucessfully uploaded files
     """
+    username = input('MednickDB Username: ')
+    password = getpass.getpass()
+    med_api = MednickAPI(username=username, password=password)
 
     files_ready_to_upload, n_files = _gather_files_to_upload(folder_to_search, pattern, default_upload_args)
     files_to_actually_upload = []
@@ -110,11 +115,22 @@ def run_upload_helper(folder_to_search: str, pattern: str, default_upload_args: 
             print('Quitting, no files uploaded')
             return None
 
-    # upload TODO
-    return files_to_actually_upload
+    files_actually_uploaded = []
+    for file in files_to_actually_upload:
+        file_ = file.copy()
+        with open(file_.pop('filepath'), 'rb') as uploaded_version:
+            file_info = med_api.upload_file(fileobject=uploaded_version,
+                                            fileformat=file_.pop('fileformat'),
+                                            filetype=file_.pop('filetype'),
+                                            studyid=file_.pop('studyid'),
+                                            versionid=file_.pop('versionid'),
+                                            **file_) #all the other stuff
+            files_actually_uploaded.append(file_info)
+
+    return files_to_actually_upload, files_actually_uploaded
 
 
-def _gather_files_to_upload(folder_to_search: str, pattern: str, default_upload_args: str=None) -> Tuple[List[dict], int]:
+def _gather_files_to_upload(folder_to_search: str, pattern: str, default_upload_args: dict=None) -> Tuple[List[dict], int]:
     """
     Searches through a folder and uploads file that match pattern. Can extract upload dict key:value pairs from filenames.
     :param folder_to_search: abs or regular path to folder to search through e.g. 'C:/Users/bdyet/data/'
@@ -125,6 +141,8 @@ def _gather_files_to_upload(folder_to_search: str, pattern: str, default_upload_
     :return: a list of upload dicts for the files to upload. File path will be added as a "filename" key to each.
     """
 
+    req_upload_keys = {'fileformat', 'filetype', 'studyid', 'versionid'}
+
     if folder_to_search[-1] is not '/' or folder_to_search[-1] is not '\\':
         folder_to_search += '/'
 
@@ -133,10 +151,13 @@ def _gather_files_to_upload(folder_to_search: str, pattern: str, default_upload_
 
     # parse specifiers for the whole folder
     if default_upload_args is not None:
-        other_specifiers = sys.argv[3:]
-        files_info = {other_spec.split('=')[0]: other_spec.split('=')[1] for other_spec in other_specifiers}
+        files_info = default_upload_args
+        all_keys = set(pattern_keys + list(files_info.keys()))
     else:
         files_info = {}
+        all_keys = set(pattern_keys)
+
+    assert all_keys.issuperset(req_upload_keys), "Not all required specifiers given. You need at least: 'fileformat', 'filetype', 'studyid', 'versionid'"
 
     file_infos = []
     files_in_folder = glob.glob(folder_to_search + '*')
@@ -150,5 +171,9 @@ def _gather_files_to_upload(folder_to_search: str, pattern: str, default_upload_
 
 
 if __name__ == '__main__':
-    run_upload_helper(sys.argv[1], sys.argv[2], sys.argv[3:] if len(sys.argv)>2 else None)
+    if len(sys.argv)>2:
+        other_specifiers = {other_spec.split('=')[0]: other_spec.split('=')[1] for other_spec in sys.argv[3:]}
+    else:
+        other_specifiers = None
+    run_upload_helper(sys.argv[1], sys.argv[2], other_specifiers)
 

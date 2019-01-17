@@ -28,11 +28,50 @@ def test_filename_parsing():
         assert error_thrown, "Incorrect error was thrown"
 
 
-def test_run_upload_helper(monkeypatch):
-    monkeypatch.setattr('builtins.input', lambda x: "y")
-    files_uploaded = run_upload_helper('testfiles/upload_helper_test_files', 'subjectid{subjectid}_visit{visitid}')
+def test_run_upload_helper_fail(monkeypatch):
+
+    def input_mock(x):
+        if x == "Username: ":
+            return 'TEST'
+        else:
+            return 'y'
+
+    monkeypatch.setattr('builtins.input', input_mock)
+    monkeypatch.setattr('getpass.getpass', lambda: "test")
+    error_thrown = False
+    try:
+        files_uploaded = run_upload_helper('testfiles/upload_helper_test_files', 'subjectid{subjectid}_visit{visitid}')
+    except AssertionError:
+        error_thrown = True
+        pass
+    assert error_thrown
+
+
+def test_run_upload_helper_pass(monkeypatch):
+    def input_mock(x):
+        if x == "Username: ":
+            return 'TEST'
+        else:
+            return 'y'
+
+    monkeypatch.setattr('builtins.input', input_mock)
+    monkeypatch.setattr('getpass.getpass', lambda: "TEST")
+
+    base_specifiers = {'studyid': 'TEST',
+                       'filetype': 'TEST',
+                       'fileformat': 'TEST',
+                       'versionid': 1}
+    files_uploaded, _ = run_upload_helper('testfiles/upload_helper_test_files',
+                                          'subjectid{subjectid}_visit{visitid}',
+                                          {'studyid': 'TEST',
+                                           'filetype': 'TEST',
+                                           'fileformat': 'TEST',
+                                           'versionid': 1})
     correct_files = [{'subjectid': 1, 'visitid': 1, 'filepath': 'testfiles/upload_helper_test_files\\CelliniLab_ER_Naps_subjectid1_visit1.json'},
                      {'subjectid': 4, 'visitid': 1, 'filepath': 'testfiles/upload_helper_test_files\\CelliniLab_ER_Naps_subjectid4_visit1.json'},
                      {'subjectid': 5, 'visitid': 1, 'filepath': 'testfiles/upload_helper_test_files\\CelliniLab_ER_Naps_subjectid5_visit1.json'}]
+
+    for correct_file in correct_files:
+        correct_file.update(base_specifiers)
 
     assert files_uploaded == correct_files
