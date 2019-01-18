@@ -1,3 +1,6 @@
+
+### This REPO IS NOT LONGER IN DEV. Please use the bitbucket version ###
+
 # python_module
 
 This is a python api to access the mednicklab database. It implements all get and post endpoints for the database server. Please see the [MednickDB Endpoint](https://app.swaggerhub.com/apis/mednickAPI/mednick-db_api/1.0.0) documentation for more information on the specific endpoints.
