@@ -116,7 +116,7 @@ def _json_loads(ret, file=False):
         ret.raise_for_status()
     except requests.exceptions.HTTPError as e:
         raise ServerError('Server Replied "' + ret.content.decode("utf-8") + '"') from e
-    if ret.reponse.status_code not in [200, 201]:
+    if ret.status_code not in [200, 201]:
         raise ResponseError('Server responded with failure code:', ret.reponse.status_code)
     if file:
         return ret.content
