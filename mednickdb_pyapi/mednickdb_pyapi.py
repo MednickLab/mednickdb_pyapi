@@ -12,6 +12,17 @@ from operator import itemgetter
 import _io
 import base64
 
+
+class ServerError(Exception):
+    """Custom error when server throws something nasty"""
+    pass
+
+
+class ResponseError(Exception):
+    """Custom error when server doesnt return what we think it should"""
+    pass
+
+
 param_map = {
     'fid':'id',
 }
@@ -76,7 +87,7 @@ class MyDecoder(json.JSONDecoder):
         Custom JSON decoder. Parses known date fields and strings that look like datetimes to python datetime.
 
         :param dct: Object to parse
-        :return:
+        :return: parsed dict object
         """
         for k, v in dct.items():
             if isinstance(v, str) and v == '':
@@ -104,8 +115,9 @@ def _json_loads(ret, file=False):
     try:
         ret.raise_for_status()
     except requests.exceptions.HTTPError as e:
-        print(ret.headers)
-        raise Exception('Server Replied "' + ret.content.decode("utf-8") + '"') from e
+        raise ServerError('Server Replied "' + ret.content.decode("utf-8") + '"') from e
+    if ret.reponse.status_code not in [200, 201]:
+        raise ResponseError('Server responded with failure code:', ret.reponse.status_code)
     if file:
         return ret.content
     else:
@@ -114,9 +126,10 @@ def _json_loads(ret, file=False):
 
 def _parse_locals_to_data_packet(locals_dict):
     """
-    Takes the locals object (i.e. function inputs as a dict), maps keys from
+    Takes the locals object (i.e. function inputs as a dict), maps keys from.
+    TODO retire this function, its pretty hacky
     :param locals_dict:
-    :return:
+    :return: parsed locals object
     """
     if 'self' in locals_dict:
         locals_dict.pop('self')
@@ -153,7 +166,7 @@ class MednickAPI:
                                    If a list with multiple dict supplied, format as flat_dict,
                                     but convert to pd.Dataframe with keys as indexs, and stack each dict in list.
          - dataframe_multi_index: TODO
-        :return: Data formated as specified
+        :return Data formatted as specified
         """
         if format == 'nested_dict':
             return ret_data
@@ -238,6 +251,7 @@ class MednickAPI:
         :param username: username to login with (generally an email)
         :param password: password
         :return: a tuple of (success, usertype)
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         # TODO
         # self.username = username
@@ -280,7 +294,8 @@ class MednickAPI:
         :param subjectid: specifies location in database to upload to
         :param visitid: specifies location in database to upload to
         :param sessionid: specifies location in database to upload to
-        :return:
+        :return: The file_info of the uploaded object
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         data_packet = _parse_locals_to_data_packet(locals())
         files = {'fileobject': data_packet.pop('fileobject')}
@@ -293,7 +308,8 @@ class MednickAPI:
         :param fid: fid of file to update
         :param kwargs: a list of keys and values to update with,
             e.g. update_file_info(fid, studyid='TEST') or update_file_info(fid, {'studyid':'TEST'})
-        :return: Unknown, should return updated file info. TODO
+        :return: Updated file info.
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         data_packet = _parse_locals_to_data_packet(locals())
         ret = self.s.put(url=self.server_address + '/files/update', data=data_packet)
@@ -304,7 +320,8 @@ class MednickAPI:
         Change the parsed status of a file. Status is True when parsed or False otherwise
         :param fid: the fid of the file to change
         :param status: The status (True | false) to change to  FIXME as of 1.2.2 this function does not take status, and can only go from false->true
-        :return:
+        :return: None
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
 
         ret = self.s.put(url=self.server_address + '/files/updateParsedStatus', data={'id':fid, 'status':status})
@@ -320,7 +337,8 @@ class MednickAPI:
         :param delete_all_versions: If true, delete all version of this file
         :param reactivate_previous: If true, set any old versions as the active version, and trigger a reparse of these files so there data is added to the datastore
         :param remove_associated_data: If true, purge datastore of all data associated with this file
-        :return:
+        :return None
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         locals_vars = locals().copy()
         name_map = {
@@ -331,7 +349,7 @@ class MednickAPI:
         }
         locals_vars.pop('self')
         data = {name_map[k]: v for k, v in locals_vars.items()}
-        return _json_loads(self.s.post(self.server_address + '/files/expire', data=data))
+        _json_loads(self.s.post(self.server_address + '/files/expire', data=data)) #check for error
 
     def get_files(self, query: str=None, previous_versions: bool=False, format: str='nested_dict', **kwargs):
         """
@@ -361,6 +379,7 @@ class MednickAPI:
         :param format: Format to return as, see format_as for possibilities
         :param kwargs: alternative way to query params, e.g. get_files(studyid='TEST') or get_files(kwargs={'studyid':'TEST'})
         :return: a list/dataframe of file_info objects that match
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         if query:
             for k, v in query_kwmap.items():
@@ -388,6 +407,7 @@ class MednickAPI:
         Get the file_info associated with a file id (i.e. the data associated with this id in the filestore)
         :param fid: the fid to get for
         :return: file_info associated with fid
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         data_packet = _parse_locals_to_data_packet(locals())
         return _json_loads(self.s.get(url=self.server_address + '/files/info', params={'id': fid}))
@@ -397,6 +417,7 @@ class MednickAPI:
         Downloads the binary data for that fid, can be saved to disk as ```open("filename.txt", "wb").write(download_file(fid))```
         :param fid: the fid of the file to download
         :return: binary data of file
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         return _json_loads(self.s.get(url=self.server_address + '/files/download', params={'id': fid}), file=True)
 
@@ -404,7 +425,8 @@ class MednickAPI:
         """
         Downloads a number of files from a list of file id's
         :param fids: list of fids to download for
-        :return: list of file binaries
+        :return: a zipped list of file binaries
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         fids_param = '*AND*'.join(fids)
         return _json_loads(self.s.get(url=self.server_address + '/files/downloadmultiple', params={'id': fids_param}))
@@ -413,15 +435,17 @@ class MednickAPI:
         """
         Deletes a list of files corresponding to the given fids.
         :param fids: list of fids to delete
-        :return: ? TODO
+        :return: None
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
-        fids_param = '*AND*'.join(fids)
-        return _json_loads(self.s.delete(url=self.server_address + '/files/expiremultiple', data={'id': fids_param}))
+        for fid in fids:
+            self.delete_file(fid=fid)
 
     def get_deleted_files(self):
         """
         Retrieves a list of fids for deleted files from the file store, no querying to file these files is done (TODO)
         :return: A huge list of all the file_infos of the files that have been deleted
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         return _json_loads(self.s.get(url=self.server_address + '/files/expired'))
 
@@ -430,6 +454,7 @@ class MednickAPI:
         Return a list of fid's for unparsed files
         :param previous_versions: if true include previous versions. FIXME this would be better as an actual backend option
         :return: file_infos of unparsed files
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         files = _json_loads(self.s.get(self.server_address + '/files/unparsed'))
         if not previous_versions:
@@ -441,6 +466,7 @@ class MednickAPI:
         Return a list of fid's for parsed files
         :param previous_versions: if true include previous versions. FIXME this would be better as an actual backend option
         :return: file_infos of parsed files
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         files = _json_loads(self.s.get(self.server_address + '/files/parsed'))
         if not previous_versions:
@@ -456,6 +482,7 @@ class MednickAPI:
         :param store: store to get data from (data or files)
         :param kwargs: specific place to search at, i.e. subjectid=1, studyid='TEST'
         :return: unique values of that variable, or empty if that variable does not exist
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         if store == 'data':
             ret = self.get_data(**kwargs, format='nested_dict')
@@ -534,13 +561,22 @@ class MednickAPI:
         :param visitid: where to put on the data store
         :param sessionid: where to put on the data store
         :return: file_info of uploaded data? TODO change to return the whole data object
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         data_packet = _parse_locals_to_data_packet(locals())
         data_packet['sourceid'] = data_packet.pop('id')
         return _json_loads(self.s.post(self.server_address + '/data/upload', data={'data': json.dumps(data_packet, cls=MyEncoder)}))
 
     def get_data(self, query=None, discard_subsets=True, format='dataframe_single_index', **kwargs):
-        """Get all the data in the datastore at the specified location. Return format as specified in args"""
+        """
+        Get all data profiles in the data store at the specified location.
+        :param query: Query to filter data. See get_files for usecases.
+        :param discard_subsets: Whether to remove profiles that are nested subsets of others (i.e. returned row is unique)
+        :param format: how to format the data, see format_as for use.
+        :param kwargs: where to search data at, same as query, but in dict form. See get_files for usecases.
+        :return: data profiles that match in format as specified by format_as
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
+        """
         if query:
             for k, v in query_kwmap.items():
                 query = query.replace(k, v)
@@ -564,6 +600,8 @@ class MednickAPI:
 
         :param kwargs: Where to delete data, e.g. delete_data(studyid=TEST), delete all data with SubjectID=TEST,
             if id in kwargs, then delete that specific profile with mongo id==id
+        :return None
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         delete_param_name = 'id'
         if delete_param_name in kwargs:
@@ -582,7 +620,7 @@ class MednickAPI:
         :param format: Return format. See format_as
         :return: the data profiles where the parsing of that file added data
         """
-        # TODO filter the returned object by just data that came from fid
+        # TODO filter the returned object by just data that came from fid?
         return self.get_data('data.'+filetype+'.sourceid='+fid, format=format)
 
     def delete_data_from_single_file(self, fid):
@@ -590,7 +628,8 @@ class MednickAPI:
         Deletes the data in the datastore associated with a file
         (i.e. get the data that was extracted from that file on upload)
         :param fid:
-        :return: TODO ?
+        :return: None
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         ret = self.s.delete(self.server_address + '/data/expireByFile', data={'id':fid})
         return _json_loads(ret)
@@ -599,7 +638,8 @@ class MednickAPI:
         """
         Delete all files on the DB, use with extreme caution. Do you really need to use this?
         :param password: the password to use this program
-        :return:
+        :return: None
+        :raises ServerError when server throws error, ResponseError when server returns something other than 200
         """
         if password == 'i_am_deleting_everything':
             files = self.get_files()
